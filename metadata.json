@@ -1,0 +1,6 @@
+{
+  "name": "Falcon Chemicals LLC",
+  "description": "Dynamic corporate ambient presentation website for Falcon Chemicals LLC with interactive audio feedback.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
