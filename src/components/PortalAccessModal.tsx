@@ -87,7 +87,9 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
     const user = users.find(
       u => u.username.toLowerCase() === usernameInput.trim().toLowerCase() ||
-           u.email.toLowerCase() === usernameInput.trim().toLowerCase()
+           u.email.toLowerCase() === usernameInput.trim().toLowerCase() ||
+           (usernameInput.trim().toLowerCase() === 'admin' && u.role === 'admin') ||
+           (usernameInput.trim().toLowerCase() === 'praveen' && u.role === 'admin')
     );
 
     if (!user) {
@@ -134,7 +136,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       const alertEmail: VirtualEmail = {
         id: `eml_${Date.now()}`,
         from: 'noreply@falconchemicals.com',
-        to: 'sarah.jenkins@falconchemicals.com',
+        to: 'praveen@falconchemicals.com',
         subject: `Security Alert: External IP Blocked for ${user.username}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
         bodyText: `Security Policy Violation Detected:\n\nUser: ${user.fullName} (${user.username})\nAttempted IP: ${currentSimulatedIp}\nRequired Subnet: 192.168.100.0/24 (Office LAN)\nTime: ${new Date().toLocaleString()}\n\nThe session was denied.`,
@@ -217,12 +219,14 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
     const user = users.find(
       u => u.username.toLowerCase() === tokenIdentityInput.trim().toLowerCase() ||
-           u.email.toLowerCase() === tokenIdentityInput.trim().toLowerCase()
+           u.email.toLowerCase() === tokenIdentityInput.trim().toLowerCase() ||
+           (tokenIdentityInput.trim().toLowerCase() === 'admin' && u.role === 'admin') ||
+           (tokenIdentityInput.trim().toLowerCase() === 'praveen' && u.role === 'admin')
     );
 
     if (!user) {
       audioEngine.playError();
-      setErrorMessage('User account not found. Contact Admin Sarah Jenkins for provisioning.');
+      setErrorMessage('User account not found. Contact Admin Praveen (praveen@falconchemicals.com) for provisioning.');
       return;
     }
 
@@ -392,13 +396,13 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   const handleRegisterRequest = (e: React.FormEvent) => {
     e.preventDefault();
     audioEngine.playSuccess();
-    setSuccessMessage('Registration request submitted to Chief Admin (Sarah Jenkins). Once approved and reports are assigned, you will receive an activation email from noreply@falconchemicals.com.');
+    setSuccessMessage('Registration request submitted to Chief Admin Praveen (praveen@falconchemicals.com). Once approved and reports are assigned, you will receive an activation email from noreply@falconchemicals.com.');
     
     // Notify admin in email
     const adminNotify: VirtualEmail = {
       id: `eml_${Date.now()}`,
       from: 'noreply@falconchemicals.com',
-      to: 'sarah.jenkins@falconchemicals.com',
+      to: 'praveen@falconchemicals.com',
       subject: `New User Provisioning Request: ${regFullName}`,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
       bodyText: `New End-User Registration:\n\nName: ${regFullName}\nUsername: ${regUsername}\nEmail: ${regEmail}\nDept: ${regDepartment}\nRequested Scope: ${regRequestedAccess}\nHost IP: ${currentSimulatedIp}\n\nPlease review and assign report permissions in Admin Access Control.`,
@@ -708,16 +712,17 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                     type="button"
                     onClick={() => {
                       audioEngine.playClick();
-                      setUsernameInput('admin');
+                      setUsernameInput('praveen');
                       setPasswordInput('FalconAdmin@2026');
                     }}
                     className="text-cyan-400 hover:text-cyan-300 font-medium hover:underline text-[11px]"
                   >
-                    Auto-Fill Admin
+                    Auto-Fill Praveen (Admin)
                   </button>
                 </div>
-                <div className="font-mono text-slate-400 flex items-center gap-4 text-[11px]">
-                  <span>User: <strong className="text-white">admin</strong></span>
+                <div className="font-mono text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                  <span>User: <strong className="text-white">praveen</strong> (or admin)</span>
+                  <span>Email: <strong className="text-white">praveen@falconchemicals.com</strong></span>
                   <span>Pass: <strong className="text-white">FalconAdmin@2026</strong></span>
                 </div>
               </div>
@@ -729,17 +734,29 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
             <div className="space-y-4">
               {tokenStep === 'request' ? (
                 <form onSubmit={handleRequestToken} className="space-y-4">
-                  <div className="p-3 bg-cyan-950/30 border border-cyan-500/20 rounded-xl text-xs text-slate-300">
-                    <p className="font-semibold text-cyan-300 mb-1">Zero-Password Token Login</p>
+                  <div className="p-3 bg-cyan-950/30 border border-cyan-500/20 rounded-xl text-xs text-slate-300 space-y-1">
+                    <p className="font-semibold text-cyan-300">Zero-Password Token Login</p>
                     <p className="text-slate-400 leading-relaxed">
                       Enter your corporate username or email to receive a secure 6-digit authentication token from <strong>noreply@falconchemicals.com</strong>.
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Username or Corporate Email
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Username or Corporate Email
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioEngine.playClick();
+                          setTokenIdentityInput('praveen@falconchemicals.com');
+                        }}
+                        className="text-[11px] text-cyan-400 hover:underline"
+                      >
+                        Auto-Fill praveen@falconchemicals.com
+                      </button>
+                    </div>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -747,7 +764,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                         required
                         value={tokenIdentityInput}
                         onChange={(e) => setTokenIdentityInput(e.target.value)}
-                        placeholder="e.g. tariq.mansoor@falconchemicals.com"
+                        placeholder="e.g. praveen@falconchemicals.com or tariq.mansoor@falconchemicals.com"
                         className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all"
                       />
                     </div>
@@ -768,16 +785,30 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                       <p className="font-semibold text-emerald-300">Token Dispatched to {pendingOtpUser?.email}</p>
                       <p className="text-slate-400 text-[11px]">Valid for 10 minutes</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        audioEngine.playNotification();
-                        onOpenEmailInbox();
-                      }}
-                      className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-semibold shadow transition-colors"
-                    >
-                      View noreply Inbox
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {generatedOtpCode && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            audioEngine.playClick();
+                            setEnteredOtp(generatedOtpCode);
+                          }}
+                          className="px-2.5 py-1 bg-emerald-700/60 hover:bg-emerald-600 border border-emerald-500/50 text-emerald-100 rounded text-xs font-semibold shadow transition-colors"
+                        >
+                          Auto-Paste ({generatedOtpCode})
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioEngine.playNotification();
+                          onOpenEmailInbox();
+                        }}
+                        className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-semibold shadow transition-colors"
+                      >
+                        View noreply Inbox
+                      </button>
+                    </div>
                   </div>
 
                   <div>

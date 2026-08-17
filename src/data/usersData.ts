@@ -4,9 +4,9 @@ import { FALCON_REPORTS } from './reportsData';
 export const INITIAL_USERS: UserAccount[] = [
   {
     id: 'usr_admin_01',
-    username: 'admin',
-    fullName: 'Sarah Jenkins (Chief Admin)',
-    email: 'sarah.jenkins@falconchemicals.com',
+    username: 'praveen',
+    fullName: 'Praveen (Chief Admin)',
+    email: 'praveen@falconchemicals.com',
     password: 'FalconAdmin@2026',
     role: 'admin',
     department: 'Executive IT & Corporate Security',
@@ -139,8 +139,8 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
   {
     id: 'log_01',
     timestamp: '2026-08-16 10:14:22',
-    username: 'admin',
-    email: 'sarah.jenkins@falconchemicals.com',
+    username: 'praveen',
+    email: 'praveen@falconchemicals.com',
     action: 'LOGIN_SUCCESS',
     ipAddress: '192.168.100.15',
     ipLocationType: 'Office LAN (192.168.100.0/24)',
@@ -208,7 +208,7 @@ export const INITIAL_EMAILS: VirtualEmail[] = [
   {
     id: 'eml_02',
     from: 'noreply@falconchemicals.com',
-    to: 'sarah.jenkins@falconchemicals.com',
+    to: 'praveen@falconchemicals.com',
     subject: 'Security Alert: External IP Access Attempt Blocked',
     timestamp: '2026-08-16 09:40:16',
     bodyText: 'Security Notice from Falcon Access Engine:\n\nAn external login attempt for user "tariq.mansoor" was blocked due to IP policy violation.\nHost IP: 86.96.12.114 (Outside Office Subnet 192.168.100.0/24)\nLocation: Dubai, UAE (Etisalat WAN)\n\nAudit Ref: AUD-2026-8819',

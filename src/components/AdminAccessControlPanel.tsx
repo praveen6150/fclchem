@@ -162,8 +162,8 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
       onAddAuditLog({
         id: `log_${Date.now()}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        username: 'admin',
-        email: 'sarah.jenkins@falconchemicals.com',
+        username: 'praveen',
+        email: 'praveen@falconchemicals.com',
         action: 'POLICY_UPDATED',
         ipAddress: currentSimulatedIp,
         ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',

@@ -114,7 +114,8 @@ export const HeroSection: React.FC<Props> = ({
                 Admins create usernames & passwords and configure granular report permissions (Sales, Inventory, Reactor Production, VAT 201, KYC). IP boundary enforcement restricts off-site access from outside Office Subnet <strong>192.168.100.0/24</strong> unless specifically authorized.
               </p>
               <div className="pt-1 flex items-center gap-4 text-[11px] font-mono text-cyan-400">
-                <span>Default Admin: <strong className="text-white">admin</strong></span>
+                <span>Default Admin: <strong className="text-white">praveen</strong> (or <strong className="text-white">admin</strong>)</span>
+                <span>Email: <strong className="text-white">praveen@falconchemicals.com</strong></span>
                 <span>Pass: <strong className="text-white">FalconAdmin@2026</strong></span>
               </div>
             </div>
