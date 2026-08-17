@@ -11,6 +11,7 @@ interface Props {
   onOpenPresentation: () => void;
   onOpenPortal: () => void;
   onOpenEmailInbox: () => void;
+  onOpenOraclePortal?: () => void;
   currentSimulatedIp: string;
   onToggleSimulatedIp: () => void;
   onNavigateSection: (sectionId: string) => void;
@@ -26,6 +27,7 @@ export const AudioControlsBar: React.FC<Props> = ({
   onOpenPresentation,
   onOpenPortal,
   onOpenEmailInbox,
+  onOpenOraclePortal,
   currentSimulatedIp,
   onToggleSimulatedIp,
   onNavigateSection,
@@ -227,6 +229,21 @@ export const AudioControlsBar: React.FC<Props> = ({
               <Radio className={`w-3.5 h-3.5 ${isAmbientPlaying ? 'animate-pulse text-cyan-400' : ''}`} />
               <span>{isAmbientPlaying ? 'Ambient: On' : 'Ambient: Off'}</span>
             </button>
+
+            {/* Oracle Reports Direct Menu (192.168.100.202:8080) */}
+            {onOpenOraclePortal && (
+              <button
+                onClick={() => {
+                  audioEngine.playClick();
+                  onOpenOraclePortal();
+                }}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#002b49] hover:bg-[#003b66] border border-sky-400/40 text-sky-200 hover:text-white text-xs font-bold rounded-lg shadow transition-all cursor-pointer"
+                title="Open Oracle Reporting System (192.168.100.202:8080)"
+              >
+                <Globe2 className="w-3.5 h-3.5 text-sky-400" />
+                <span>Oracle Reports (192.168.100.202:8080)</span>
+              </button>
+            )}
 
             {/* Primary Portal Login Button */}
             <button

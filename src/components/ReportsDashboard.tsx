@@ -32,6 +32,7 @@ interface ReportsDashboardProps {
   onOpenAdminPanel?: () => void;
   onLogout: () => void;
   onOpenEmailInbox: () => void;
+  onOpenOraclePortal?: () => void;
 }
 
 export const ReportsDashboard: React.FC<ReportsDashboardProps> = ({
@@ -39,7 +40,8 @@ export const ReportsDashboard: React.FC<ReportsDashboardProps> = ({
   currentSimulatedIp,
   onOpenAdminPanel,
   onLogout,
-  onOpenEmailInbox
+  onOpenEmailInbox,
+  onOpenOraclePortal
 }) => {
   // Filter reports that this user is explicitly permitted to view
   const permittedReports = useMemo(() => {
@@ -157,6 +159,20 @@ export const ReportsDashboard: React.FC<ReportsDashboardProps> = ({
               {isOfficeSubnet ? 'Office Subnet' : 'WAN'}
             </span>
           </div>
+
+          {/* Oracle Reports Menu (192.168.100.202:8080) for all users */}
+          {onOpenOraclePortal && (
+            <button
+              onClick={() => {
+                audioEngine.playClick();
+                onOpenOraclePortal();
+              }}
+              className="px-3 py-1.5 bg-[#002b49] hover:bg-[#003b66] border border-sky-400/40 text-sky-200 hover:text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition-all"
+            >
+              <Globe2 className="w-3.5 h-3.5 text-sky-400" />
+              <span>Oracle Reports (192.168.100.202:8080)</span>
+            </button>
+          )}
 
           {/* Admin Control Switch (Only for Admins) */}
           {currentUser.role === 'admin' && onOpenAdminPanel && (

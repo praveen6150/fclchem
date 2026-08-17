@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount, AuditLogEntry, VirtualEmail, IPAccessPolicy, AuthMethod, RoleType } from '../types';
 import { FALCON_REPORTS } from '../data/reportsData';
+import { ORACLE_REPORT_MODULES, ALL_ORACLE_REPORTS, DEFAULT_ALL_ORACLE_REPORT_IDS } from '../data/oracleReportsData';
 import { 
   Users, 
   ShieldCheck, 
@@ -23,7 +24,9 @@ import {
   RefreshCw, 
   FileText, 
   Sliders,
-  Check
+  Check,
+  ExternalLink,
+  Database
 } from 'lucide-react';
 import { audioEngine } from '../services/audioEngine';
 
@@ -36,6 +39,7 @@ interface AdminAccessControlPanelProps {
   onSendVirtualEmail: (email: VirtualEmail) => void;
   onReturnToReports: () => void;
   onOpenEmailInbox: () => void;
+  onOpenOraclePortal?: () => void;
 }
 
 export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = ({
@@ -46,7 +50,8 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
   onAddAuditLog,
   onSendVirtualEmail,
   onReturnToReports,
-  onOpenEmailInbox
+  onOpenEmailInbox,
+  onOpenOraclePortal
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'audit_logs' | 'network_policies'>('users');
   const [searchUserQuery, setSearchUserQuery] = useState('');
@@ -96,18 +101,27 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
     setFormUsername('');
     setFormEmail('');
     setFormPassword('Falcon@2026');
-    setFormRole('analyst');
-    setFormDepartment('Commercial Sales');
+    setFormRole('manager');
+    setFormDepartment('Commercial Sales & Dispatch');
     setFormBranch('Falcon Chemicals LLC - Dubai');
     setFormAuthMethod('password');
     setFormIpPolicy('office_only');
     setFormCustomSubnet('192.168.100.0/24');
-    setFormAllowedReports(['rep_sales_daily', 'rep_stock_balance']);
+    // Default to sales & dispatch oracle reports
+    setFormAllowedReports([
+      'ora_sales_div_drilldown',
+      'ora_sales_avg_analysis',
+      'ora_sales_cust_supp_master',
+      'ora_sales_salesman_rep',
+      'ora_dispatch_daily_report',
+      'rep_sales_daily',
+      'rep_sales_customer'
+    ]);
     setFormIsActive(true);
     setIsEditModalOpen(true);
   };
 
-  // Toggle report permission checkbox
+  // Toggle individual report permission checkbox
   const handleToggleReport = (reportId: string) => {
     audioEngine.playClick();
     if (formAllowedReports.includes(reportId)) {
@@ -117,15 +131,15 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
     }
   };
 
-  // Select all reports in a specific category
-  const handleSelectCategoryReports = (category: string) => {
+  // Select all reports in an Oracle module
+  const handleToggleModuleReports = (moduleReports: { id: string }[]) => {
     audioEngine.playClick();
-    const categoryReportIds = FALCON_REPORTS.filter(r => r.category === category).map(r => r.id);
-    const allSelected = categoryReportIds.every(id => formAllowedReports.includes(id));
+    const ids = moduleReports.map(r => r.id);
+    const allSelected = ids.every(id => formAllowedReports.includes(id));
     if (allSelected) {
-      setFormAllowedReports(formAllowedReports.filter(id => !categoryReportIds.includes(id)));
+      setFormAllowedReports(formAllowedReports.filter(id => !ids.includes(id)));
     } else {
-      const merged = Array.from(new Set([...formAllowedReports, ...categoryReportIds]));
+      const merged = Array.from(new Set([...formAllowedReports, ...ids]));
       setFormAllowedReports(merged);
     }
   };
@@ -136,21 +150,21 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
     audioEngine.playSuccess();
 
     if (editingUserId) {
-      // Update existing
+      // Update existing user
       const updated = users.map(u => {
         if (u.id === editingUserId) {
           return {
             ...u,
-            fullName: formFullName,
-            username: formUsername,
-            email: formEmail,
+            fullName: formFullName.trim(),
+            username: formUsername.trim().toLowerCase(),
+            email: formEmail.trim().toLowerCase(),
             password: formPassword,
             role: formRole,
-            department: formDepartment,
-            companyOrBranch: formBranch,
+            department: formDepartment.trim(),
+            companyOrBranch: formBranch.trim(),
             authMethod: formAuthMethod,
             ipPolicy: formIpPolicy,
-            customAllowedSubnet: formCustomSubnet,
+            customAllowedSubnet: formCustomSubnet.trim(),
             allowedReportIds: formAllowedReports,
             isActive: formIsActive
           };
@@ -171,19 +185,19 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
         status: 'SUCCESS'
       });
     } else {
-      // Create new
+      // Create new user
       const newUser: UserAccount = {
         id: `usr_${Date.now()}`,
-        fullName: formFullName,
-        username: formUsername,
-        email: formEmail,
+        fullName: formFullName.trim(),
+        username: formUsername.trim().toLowerCase(),
+        email: formEmail.trim().toLowerCase(),
         password: formPassword,
         role: formRole,
-        department: formDepartment,
-        companyOrBranch: formBranch,
+        department: formDepartment.trim(),
+        companyOrBranch: formBranch.trim(),
         authMethod: formAuthMethod,
         ipPolicy: formIpPolicy,
-        customAllowedSubnet: formCustomSubnet,
+        customAllowedSubnet: formCustomSubnet.trim(),
         allowedReportIds: formAllowedReports,
         isActive: formIsActive,
         createdDate: new Date().toISOString().slice(0, 10)
@@ -194,10 +208,10 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
       const welcomeEmail: VirtualEmail = {
         id: `eml_${Date.now()}`,
         from: 'noreply@falconchemicals.com',
-        to: formEmail,
+        to: formEmail.trim().toLowerCase(),
         subject: 'Welcome to Falcon Chemicals Portal - Account Provisioned',
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        bodyText: `Dear ${formFullName},\n\nYour Falcon Chemicals Enterprise Portal account has been created by Chief Admin.\n\nUsername: ${formUsername}\nTemporary Password: ${formPassword}\nAssigned Reports: ${formAllowedReports.length} modules\nNetwork Access Policy: ${formIpPolicy === 'office_only' ? 'Office Subnet (192.168.100.0/24)' : 'Internet & Home WAN Allowed'}\n\nPlease authenticate at: portal.falconchemicals.com\n\nCorporate Security - Falcon Chemicals LLC`,
+        bodyText: `Dear ${formFullName},\n\nYour Falcon Chemicals Enterprise Portal account has been created by Chief Administrator Praveen.\n\nUsername: ${formUsername}\nPassword: ${formPassword}\nAssigned Reports: ${formAllowedReports.length} Oracle & Operations modules\nNetwork Access Policy: ${formIpPolicy === 'office_only' ? 'Office Subnet Only (192.168.100.0/24)' : 'Internet & Home WAN Allowed'}\n\nPlease authenticate at: 192.168.100.202:8080\n\nCorporate IT Security - Falcon Chemicals LLC`,
         type: 'account_created',
         isRead: false
       };
@@ -206,8 +220,8 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
       onAddAuditLog({
         id: `log_${Date.now()}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        username: 'admin',
-        email: 'sarah.jenkins@falconchemicals.com',
+        username: 'praveen',
+        email: 'praveen@falconchemicals.com',
         action: 'USER_CREATED',
         ipAddress: currentSimulatedIp,
         ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
@@ -221,84 +235,104 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
 
   // Delete User
   const handleDeleteUser = (userId: string, username: string) => {
-    if (username === 'admin') {
+    if (username === 'praveen' || username === 'admin') {
       audioEngine.playError();
-      alert('The Chief Administrator account cannot be deleted.');
+      alert('Chief Administrator account cannot be deleted.');
       return;
     }
-    if (window.confirm(`Are you sure you want to revoke access for "${username}"?`)) {
+    if (confirm(`Are you sure you want to delete end user "${username}"?`)) {
       audioEngine.playClick();
       const updated = users.filter(u => u.id !== userId);
       onUpdateUsers(updated);
       onAddAuditLog({
         id: `log_${Date.now()}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        username: 'admin',
-        email: 'sarah.jenkins@falconchemicals.com',
+        username: 'praveen',
+        email: 'praveen@falconchemicals.com',
         action: 'POLICY_UPDATED',
         ipAddress: currentSimulatedIp,
-        ipLocationType: 'Office LAN (192.168.100.0/24)',
-        details: `Revoked access and deleted user account "${username}"`,
+        ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
+        details: `Deleted user account "${username}" and revoked all reporting permissions.`,
         status: 'WARNING'
       });
     }
   };
 
+  // Filtered users for table search
   const filteredUsers = users.filter(u => 
     u.fullName.toLowerCase().includes(searchUserQuery.toLowerCase()) ||
     u.username.toLowerCase().includes(searchUserQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchUserQuery.toLowerCase()) ||
-    u.department.toLowerCase().includes(searchUserQuery.toLowerCase())
+    u.department.toLowerCase().includes(searchUserQuery.toLowerCase()) ||
+    u.role.toLowerCase().includes(searchUserQuery.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchUserQuery.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col selection:bg-cyan-500 selection:text-slate-950">
       
-      {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      {/* Top Header */}
+      <header className="bg-slate-900 border-b border-cyan-500/20 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
               audioEngine.playClick();
               onReturnToReports();
             }}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all flex items-center gap-2 text-xs font-semibold"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Reports
+            <span>Operations Hub</span>
           </button>
+
+          <div className="h-5 w-px bg-slate-800"></div>
+
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-white tracking-wide">
-                Admin Access Control & RBAC Engine
+              <h1 className="text-sm sm:text-base font-bold text-white tracking-wide">
+                Admin Access Control & RBAC Policy Engine
               </h1>
-              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
-                Admin Mode
+              <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded">
+                Admin: Praveen
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Falcon Chemicals LLC • Role-Based Report Permissions & Office IP Boundary Security
+            <p className="text-[11px] text-slate-400">
+              Granular Oracle Report Permissions • IP Subnet Authorization (192.168.100.0/24)
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-2.5">
+          {onOpenOraclePortal && (
+            <button
+              onClick={() => {
+                audioEngine.playClick();
+                onOpenOraclePortal();
+              }}
+              className="px-3 py-1.5 bg-[#002b49] hover:bg-[#003b66] border border-sky-400/40 text-sky-200 hover:text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+            >
+              <Database className="w-3.5 h-3.5 text-sky-400" />
+              <span>Oracle Portal (192.168.100.202:8080)</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               audioEngine.playNotification();
               onOpenEmailInbox();
             }}
-            className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-all"
           >
             <Mail className="w-3.5 h-3.5" />
-            noreply Dispatch Log
+            <span>noreply Inbox</span>
           </button>
+
           <button
             onClick={handleOpenCreateUser}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-cyan-900/30 transition-all flex items-center gap-1.5"
+            className="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-cyan-900/30 transition-all"
           >
             <Plus className="w-4 h-4" />
-            Create End User
+            <span>Create End User</span>
           </button>
         </div>
       </header>
@@ -317,7 +351,7 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
           }`}
         >
           <Users className="w-4 h-4" />
-          End Users & Report Access ({users.length})
+          End Users & RBAC Matrix ({users.length})
         </button>
 
         <button
@@ -404,9 +438,9 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                           <td className="p-3.5 px-4">
                             <div className="font-semibold text-white flex items-center gap-2">
                               {user.fullName}
-                              {user.username === 'admin' && (
+                              {(user.username === 'praveen' || user.username === 'admin') && (
                                 <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 text-[10px] font-bold rounded">
-                                  CHIEF
+                                  CHIEF ADMIN
                                 </span>
                               )}
                             </div>
@@ -451,32 +485,35 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                           <td className="p-3.5 px-4">
                             <div className="flex items-center gap-1.5">
                               {isOfficeOnly ? (
-                                <div className="text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded flex items-center gap-1">
+                                <span className="px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 font-medium flex items-center gap-1">
                                   <Building2 className="w-3 h-3 text-emerald-400" />
-                                  <span>Office (192.168.100.0/24)</span>
-                                </div>
+                                  Office Subnet Only (192.168.100.0/24)
+                                </span>
                               ) : (
-                                <div className="text-sky-300 bg-sky-950/60 border border-sky-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                                  <Globe2 className="w-3 h-3 text-sky-400" />
-                                  <span>Internet Allowed</span>
-                                </div>
+                                <span className="px-2.5 py-1 rounded bg-amber-950/80 text-amber-300 border border-amber-500/30 font-medium flex items-center gap-1">
+                                  <Globe2 className="w-3 h-3 text-amber-400" />
+                                  Internet & Home Allowed
+                                </span>
                               )}
                             </div>
                           </td>
 
                           {/* Permitted Reports Count */}
                           <td className="p-3.5 px-4 text-center">
-                            <span className="font-mono font-bold text-cyan-400 text-sm">
-                              {user.allowedReportIds.length} / {FALCON_REPORTS.length}
+                            <span className="px-2.5 py-1 rounded-full font-mono text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                              {user.allowedReportIds.length} Reports
                             </span>
-                            <div className="text-[10px] text-slate-400">Reports Enabled</div>
                           </td>
 
                           {/* Last Login */}
-                          <td className="p-3.5 px-4 font-mono text-[11px] text-slate-400">
-                            <div>{user.lastLogin || 'Never'}</div>
+                          <td className="p-3.5 px-4">
+                            <div className="text-slate-300 font-mono text-[11px]">
+                              {user.lastLogin || 'Never'}
+                            </div>
                             {user.lastLoginIp && (
-                              <div className="text-slate-500 text-[10px]">{user.lastLoginIp}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">
+                                IP: {user.lastLoginIp}
+                              </div>
                             )}
                           </td>
 
@@ -485,16 +522,16 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => handleOpenEditUser(user)}
-                                className="p-1.5 bg-slate-800 hover:bg-cyan-900/60 text-slate-300 hover:text-cyan-300 rounded-lg border border-slate-700 transition-colors"
-                                title="Edit Role & Report Access"
+                                className="p-1.5 bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white rounded-lg transition-all"
+                                title="Edit User & Permissions"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
-                              {user.username !== 'admin' && (
+                              {user.username !== 'praveen' && user.username !== 'admin' && (
                                 <button
                                   onClick={() => handleDeleteUser(user.id, user.username)}
-                                  className="p-1.5 bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-300 rounded-lg border border-slate-700 transition-colors"
-                                  title="Revoke Access"
+                                  className="p-1.5 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-lg transition-all"
+                                  title="Delete User"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -516,47 +553,64 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
         {/* TAB 2: AUDIT LOGS */}
         {activeTab === 'audit_logs' && (
           <div className="space-y-4">
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-white">Live Authentication & IP Access Audit Log</h3>
-                  <p className="text-xs text-slate-400">Automated ledger of all login attempts, blocked IP connections, and token dispatches</p>
-                </div>
-                <span className="font-mono text-xs text-emerald-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Listening
-                </span>
+            <div className="flex items-center justify-between bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+              <div>
+                <h3 className="font-bold text-white text-sm">Security & Access Audit Trail</h3>
+                <p className="text-xs text-slate-400">
+                  Logs every authentication attempt, IP subnet verification, and permission adjustment
+                </p>
               </div>
+              <button
+                onClick={() => {
+                  audioEngine.playNotification();
+                  onOpenEmailInbox();
+                }}
+                className="px-3 py-1.5 bg-cyan-950 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                View noreply Dispatch Logs
+              </button>
+            </div>
 
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-300 font-semibold">
-                      <th className="p-3 px-4">Timestamp</th>
-                      <th className="p-3 px-4">User</th>
-                      <th className="p-3 px-4">Action</th>
-                      <th className="p-3 px-4">Host IP & Subnet</th>
-                      <th className="p-3 px-4">Security Event Details</th>
-                      <th className="p-3 px-4 text-center">Status</th>
+                      <th className="p-3.5 px-4">Timestamp</th>
+                      <th className="p-3.5 px-4">Event Type</th>
+                      <th className="p-3.5 px-4">User</th>
+                      <th className="p-3.5 px-4">Host IP Address</th>
+                      <th className="p-3.5 px-4">Details</th>
+                      <th className="p-3.5 px-4 text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
                     {auditLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-800/40 font-mono text-[11px]">
-                        <td className="p-3 px-4 text-slate-400 shrink-0">{log.timestamp}</td>
-                        <td className="p-3 px-4 text-white font-semibold">{log.username}</td>
-                        <td className="p-3 px-4">
-                          <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-slate-800 text-slate-200">
-                            {log.action}
+                      <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="p-3.5 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                          {log.timestamp}
+                        </td>
+                        <td className="p-3.5 px-4 font-semibold text-cyan-300 font-sans">
+                          {log.action}
+                        </td>
+                        <td className="p-3.5 px-4 text-slate-200">
+                          {log.username}
+                        </td>
+                        <td className="p-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[11px] ${
+                            log.ipAddress.startsWith('192.168.100.')
+                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-rose-950 text-rose-300 border border-rose-500/30'
+                          }`}>
+                            {log.ipAddress}
                           </span>
                         </td>
-                        <td className="p-3 px-4 text-cyan-300">
-                          <div>{log.ipAddress}</div>
-                          <div className="text-[10px] text-slate-500 font-sans">{log.ipLocationType}</div>
+                        <td className="p-3.5 px-4 text-slate-300 font-sans text-xs max-w-md">
+                          {log.details}
                         </td>
-                        <td className="p-3 px-4 text-slate-300 font-sans">{log.details}</td>
-                        <td className="p-3 px-4 text-center">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                        <td className="p-3.5 px-4 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             log.status === 'SUCCESS'
                               ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
                               : log.status === 'DENIED'
@@ -575,85 +629,113 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
           </div>
         )}
 
-        {/* TAB 3: NETWORK POLICIES */}
+        {/* TAB 3: NETWORK & IP POLICIES */}
         {activeTab === 'network_policies' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Office Subnet Architecture */}
+            <div className="bg-slate-900 border border-cyan-500/30 rounded-2xl p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Falcon Dubai Office Subnet Policy</h3>
-                  <p className="text-xs text-slate-400">Default Corporate LAN CIDR: 192.168.100.0/24</p>
+                  <h3 className="font-bold text-white text-base">Office LAN Subnet (192.168.100.0/24)</h3>
+                  <p className="text-xs text-slate-400">Internal Falcon Chemicals Enterprise Network</p>
                 </div>
               </div>
+
               <p className="text-xs text-slate-300 leading-relaxed">
-                When an end user is configured with <strong>"Office Subnet Only"</strong>, the Falcon Access Control Engine validates the inbound connection against the internal IP range (192.168.100.1 - 192.168.100.254). Any request originating from residential ISPs (Etisalat/Du WANs) or mobile data is instantly blocked, and a security alert is dispatched from <strong>noreply@falconchemicals.com</strong>.
+                By default, all end users have their IP Access Policy restricted to the internal office CIDR range <code>192.168.100.0/24</code>. When employees attempt to log in from off-site or external home Internet connections without admin authorization, the security gateway intercepts the connection, records an audit log, and notifies Chief Administrator Praveen.
               </p>
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 space-y-1">
-                <div className="text-emerald-400 font-semibold">Subnet Gateway: 192.168.100.1</div>
-                <div>Subnet Mask: 255.255.255.0 (/24)</div>
-                <div>Usable Host Range: 192.168.100.1 - 192.168.100.254</div>
+
+              <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Subnet Mask:</span>
+                  <span className="font-mono text-cyan-300">255.255.255.0 (/24)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">IP Host Range:</span>
+                  <span className="font-mono text-slate-200">192.168.100.1 – 192.168.100.254</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Oracle Reports Host:</span>
+                  <span className="font-mono text-emerald-400">192.168.100.202:8080</span>
+                </div>
               </div>
             </div>
 
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4">
+            {/* Simulated Workstation IP Control */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <Globe2 className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                  <Network className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Remote & Internet Access Policy</h3>
-                  <p className="text-xs text-slate-400">For Executives, Field Sales & Logistics</p>
+                  <h3 className="font-bold text-white text-base">Live IP Subnet Simulation</h3>
+                  <p className="text-xs text-slate-400">Active connection test engine</p>
                 </div>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Users with <strong>"Internet Allowed"</strong> privileges may authenticate from any public IP address across the UAE or international locations. To ensure strict data protection, Admins can mandate <strong>6-Digit Token OTP</strong> verification or 2FA via email for remote workers.
-              </p>
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 space-y-1">
-                <div className="text-sky-400 font-semibold">Remote Validation: Enabled</div>
-                <div>Email Token Dispatcher: noreply@falconchemicals.com</div>
-                <div>Session Timeout: 30 Minutes Inactivity</div>
+
+              <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Current Workstation IP:</span>
+                  <span className={`px-2.5 py-1 rounded font-mono font-bold text-xs ${
+                    currentSimulatedIp.startsWith('192.168.100.')
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {currentSimulatedIp}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">
+                  Status: {currentSimulatedIp.startsWith('192.168.100.') ? (
+                    <strong className="text-emerald-400">Internal Office Workstation (Authorized)</strong>
+                  ) : (
+                    <strong className="text-amber-400">External WAN / Remote Connection</strong>
+                  )}
+                </div>
               </div>
             </div>
+
           </div>
         )}
 
       </main>
 
-      {/* CREATE / EDIT USER MODAL */}
+      {/* CREATE / EDIT USER MODAL WITH ORACLE REPORTS RBAC MATRIX */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-3xl bg-slate-900 border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+          <div className="relative w-full max-w-4xl bg-slate-900 border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
             
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 border-b border-slate-800 flex items-center justify-between">
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 to-slate-850 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                  <Sliders className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <KeyRound className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">
-                    {editingUserId ? 'Edit End User & Report Access' : 'Create New End User Account'}
-                  </h2>
+                  <h3 className="text-base font-bold text-white">
+                    {editingUserId ? 'Edit End User & Report Access' : 'Create New End User & Provision RBAC'}
+                  </h3>
                   <p className="text-xs text-slate-400">
-                    Assign granular report permissions, authentication method, and IP network policy
+                    Configure identity, network IP boundary, and assign Oracle reporting permissions
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
               >
                 ✕
               </button>
             </div>
 
-            {/* Modal Body */}
-            <form onSubmit={handleSaveUser} className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
+            {/* Modal Form Body */}
+            <form onSubmit={handleSaveUser} className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
               
-              {/* Basic Details */}
+              {/* Section 1: User Identity */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
                   1. User Identification & Credentials
@@ -669,7 +751,7 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                       required
                       value={formFullName}
                       onChange={(e) => setFormFullName(e.target.value)}
-                      placeholder="e.g. Tariq Al-Mansoor"
+                      placeholder="e.g. Ajay Kumar"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-cyan-400"
                     />
                   </div>
@@ -683,7 +765,7 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                       required
                       value={formUsername}
                       onChange={(e) => setFormUsername(e.target.value)}
-                      placeholder="e.g. tariq.mansoor"
+                      placeholder="e.g. ajay"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-cyan-400"
                     />
                   </div>
@@ -699,21 +781,21 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                       required
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
-                      placeholder="tariq@falconchemicals.com"
+                      placeholder="ajay@falconchemicals.com"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-cyan-400"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Password (or Temp Secret) *
+                      Password (or Initial Secret) *
                     </label>
                     <input
                       type="text"
                       required
                       value={formPassword}
                       onChange={(e) => setFormPassword(e.target.value)}
-                      placeholder="Password"
+                      placeholder="Falcon@2026"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-cyan-400"
                     />
                   </div>
@@ -729,11 +811,11 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                       onChange={(e) => setFormRole(e.target.value as RoleType)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-cyan-400"
                     >
-                      <option value="admin">Admin (Full System Control)</option>
                       <option value="manager">Manager (Department Supervisor)</option>
-                      <option value="analyst">Analyst (Data Analysis & Export)</option>
+                      <option value="analyst">Analyst (Commercial / Data Analyst)</option>
                       <option value="operator">Operator (Plant & Lab Operations)</option>
-                      <option value="auditor">Auditor (Finance & KYC Inspector)</option>
+                      <option value="auditor">Auditor (Finance & KYC)</option>
+                      <option value="admin">Admin (Full System Control)</option>
                     </select>
                   </div>
 
@@ -745,15 +827,15 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                       type="text"
                       value={formDepartment}
                       onChange={(e) => setFormDepartment(e.target.value)}
-                      placeholder="e.g. Commercial Sales"
+                      placeholder="e.g. Commercial Sales & Dispatch"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-cyan-400"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Authentication & IP Policy */}
-              <div className="space-y-3 pt-2 border-t border-slate-800">
+              {/* Section 2: IP Policy & Auth */}
+              <div className="space-y-3 pt-3 border-t border-slate-800">
                 <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
                   2. Authentication Mode & Host IP Boundary Policy
                 </h4>
@@ -791,85 +873,168 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                 </div>
               </div>
 
-              {/* Granular Report Permissions Selector */}
-              <div className="space-y-3 pt-2 border-t border-slate-800">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
-                    3. Granular Report Permissions ({formAllowedReports.length} of {FALCON_REPORTS.length} selected)
-                  </h4>
-                  <div className="flex gap-2">
+              {/* Section 3: Oracle Reports Permissions Matrix */}
+              <div className="space-y-3 pt-3 border-t border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                      <Database className="w-3.5 h-3.5" />
+                      3. Oracle Enterprise Reports Matrix (192.168.100.202:8080)
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Approved: <strong className="text-white">{formAllowedReports.length}</strong> reports selected for this user
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs">
                     <button
                       type="button"
-                      onClick={() => setFormAllowedReports(FALCON_REPORTS.map(r => r.id))}
-                      className="text-[11px] text-cyan-400 hover:underline"
+                      onClick={() => setFormAllowedReports(DEFAULT_ALL_ORACLE_REPORT_IDS)}
+                      className="px-2.5 py-1 bg-cyan-950 text-cyan-300 border border-cyan-500/30 rounded text-[11px] font-semibold hover:bg-cyan-900"
                     >
-                      Select All
+                      Grant All 22 Oracle Reports
                     </button>
-                    <span className="text-slate-600">•</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const salesAndDispIds = [
+                          ...ORACLE_REPORT_MODULES.find(m => m.id === 'sales_analytics')!.reports.map(r => r.id),
+                          ...ORACLE_REPORT_MODULES.find(m => m.id === 'dispatch_logistics')!.reports.map(r => r.id)
+                        ];
+                        setFormAllowedReports(salesAndDispIds);
+                      }}
+                      className="px-2.5 py-1 bg-slate-800 text-slate-200 border border-slate-700 rounded text-[11px] font-semibold hover:bg-slate-700"
+                    >
+                      Sales & Dispatch Only
+                    </button>
                     <button
                       type="button"
                       onClick={() => setFormAllowedReports([])}
-                      className="text-[11px] text-slate-400 hover:underline"
+                      className="px-2.5 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded text-[11px] hover:text-slate-200"
                     >
                       Clear All
                     </button>
                   </div>
                 </div>
 
-                {/* Group by category */}
-                {(['sales', 'inventory', 'production', 'finance', 'kyc_compliance'] as const).map((cat) => {
-                  const catReports = FALCON_REPORTS.filter(r => r.category === cat);
-                  const isAllCatSelected = catReports.every(r => formAllowedReports.includes(r.id));
+                {/* Module-by-Module Oracle Grid */}
+                <div className="space-y-3 pt-1">
+                  {ORACLE_REPORT_MODULES.map((module) => {
+                    const allSelected = module.reports.every(r => formAllowedReports.includes(r.id));
+                    const selectedCount = module.reports.filter(r => formAllowedReports.includes(r.id)).length;
 
-                  return (
-                    <div key={cat} className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                        <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-                          {cat.replace('_', ' ')} Reports
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectCategoryReports(cat)}
-                          className="text-[11px] text-cyan-400 hover:underline"
-                        >
-                          {isAllCatSelected ? 'Deselect Category' : 'Select Category'}
-                        </button>
-                      </div>
+                    return (
+                      <div key={module.id} className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-3.5 bg-cyan-400 rounded-full"></span>
+                            <span className="text-xs font-bold text-slate-200">
+                              {module.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              ({selectedCount}/{module.reports.length} selected)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleModuleReports(module.reports)}
+                            className="text-[11px] text-cyan-400 hover:underline font-medium"
+                          >
+                            {allSelected ? 'Deselect Module' : 'Select All in Module'}
+                          </button>
+                        </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                        {catReports.map((report) => {
-                          const isChecked = formAllowedReports.includes(report.id);
-                          return (
-                            <label
-                              key={report.id}
-                              className={`p-2 rounded-lg border cursor-pointer flex items-start gap-2.5 transition-all text-xs ${
-                                isChecked
-                                  ? 'bg-cyan-950/40 border-cyan-500/40 text-white'
-                                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => handleToggleReport(report.id)}
-                                className="mt-0.5 rounded bg-slate-950 border-slate-700 text-cyan-500 focus:ring-0"
-                              />
-                              <div className="flex-1">
-                                <div className="font-semibold text-xs flex items-center justify-between">
-                                  <span>{report.title}</span>
-                                  <span className="text-[10px] font-mono text-slate-500">{report.code}</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          {module.reports.map((report) => {
+                            const isChecked = formAllowedReports.includes(report.id);
+                            return (
+                              <label
+                                key={report.id}
+                                className={`p-2 rounded-lg border cursor-pointer flex items-start gap-2.5 transition-all text-xs ${
+                                  isChecked
+                                    ? 'bg-cyan-950/40 border-cyan-500/40 text-white'
+                                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleToggleReport(report.id)}
+                                  className="mt-0.5 rounded bg-slate-950 border-slate-700 text-cyan-500 focus:ring-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-xs flex items-center justify-between gap-1">
+                                    <span className="truncate">{report.title}</span>
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
+                                      report.status === 'LIVE' ? 'bg-emerald-950 text-emerald-300' : 'bg-slate-800 text-slate-400'
+                                    }`}>
+                                      {report.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                    {report.oracleCode}
+                                  </p>
                                 </div>
-                                <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
-                                  {report.description}
-                                </p>
-                              </div>
-                            </label>
-                          );
-                        })}
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+
+                {/* Operations Hub Core Reports */}
+                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2 mt-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                    <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                      Core Operations Hub Reports
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const coreIds = FALCON_REPORTS.map(r => r.id);
+                        const allCore = coreIds.every(id => formAllowedReports.includes(id));
+                        if (allCore) {
+                          setFormAllowedReports(formAllowedReports.filter(id => !coreIds.includes(id)));
+                        } else {
+                          setFormAllowedReports(Array.from(new Set([...formAllowedReports, ...coreIds])));
+                        }
+                      }}
+                      className="text-[11px] text-cyan-400 hover:underline font-medium"
+                    >
+                      Toggle Core Hub Reports
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {FALCON_REPORTS.map((rep) => {
+                      const isChecked = formAllowedReports.includes(rep.id);
+                      return (
+                        <label
+                          key={rep.id}
+                          className={`p-2 rounded-lg border cursor-pointer flex items-start gap-2.5 transition-all text-xs ${
+                            isChecked
+                              ? 'bg-cyan-950/40 border-cyan-500/40 text-white'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleReport(rep.id)}
+                            className="mt-0.5 rounded bg-slate-950 border-slate-700 text-cyan-500 focus:ring-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="font-semibold text-xs text-slate-200 block truncate">{rep.title}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{rep.code}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
               </div>
 
               {/* Modal Actions */}

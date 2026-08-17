@@ -44,6 +44,37 @@ export interface UserAccount {
 
 export type ReportCategory = 'sales' | 'inventory' | 'production' | 'finance' | 'kyc_compliance';
 
+export type OracleModuleId = 
+  | 'sales_analytics' 
+  | 'dispatch_logistics' 
+  | 'procurement_purchase' 
+  | 'production_manufacturing' 
+  | 'taxation_vat' 
+  | 'finance_accounts';
+
+export type OracleReportStatus = 'LIVE' | 'SOON';
+
+export interface OracleReportItem {
+  id: string;
+  moduleId: OracleModuleId;
+  moduleName: string;
+  title: string;
+  status: OracleReportStatus;
+  description?: string;
+  oracleCode?: string;
+  endpointUrl?: string;
+  columns?: ReportColumn[];
+  sampleData?: Record<string, any>[];
+  summaryStats?: { label: string; value: string; sublabel?: string }[];
+}
+
+export interface OracleReportModule {
+  id: OracleModuleId;
+  name: string;
+  order: number;
+  reports: OracleReportItem[];
+}
+
 export interface ReportColumn {
   key: string;
   label: string;

@@ -723,7 +723,6 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                 <div className="font-mono text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
                   <span>User: <strong className="text-white">praveen</strong> (or admin)</span>
                   <span>Email: <strong className="text-white">praveen@falconchemicals.com</strong></span>
-                  <span>Pass: <strong className="text-white">FalconAdmin@2026</strong></span>
                 </div>
               </div>
             </form>
@@ -965,7 +964,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                         required
                         value={recoveryEmailInput}
                         onChange={(e) => setRecoveryEmailInput(e.target.value)}
-                        placeholder="sarah.jenkins@falconchemicals.com"
+                        placeholder="praveen@falconchemicals.com"
                         className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none"
                       />
                     </div>

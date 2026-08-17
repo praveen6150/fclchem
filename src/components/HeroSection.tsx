@@ -116,7 +116,6 @@ export const HeroSection: React.FC<Props> = ({
               <div className="pt-1 flex items-center gap-4 text-[11px] font-mono text-cyan-400">
                 <span>Default Admin: <strong className="text-white">praveen</strong> (or <strong className="text-white">admin</strong>)</span>
                 <span>Email: <strong className="text-white">praveen@falconchemicals.com</strong></span>
-                <span>Pass: <strong className="text-white">FalconAdmin@2026</strong></span>
               </div>
             </div>
 
