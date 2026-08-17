@@ -188,13 +188,13 @@ export default function App() {
     setAuditLogs(prev => [log, ...prev]);
   };
 
-  // Direct access to Oracle Reports Menu (192.168.100.202:8080)
+  // Direct access to Oracle Reports Menu (192.168.100.202:8080) - Enforces 192.168.100.202 Verification
   const handleOpenOraclePortal = () => {
     audioEngine.playClick();
     if (!currentUser) {
-      // If not logged in, prompt login first or authenticate as praveen by default for demo
-      const defaultUser = users.find(u => u.username === 'praveen') || users[0];
-      setCurrentUser(defaultUser);
+      // Require verification through portal gateway 192.168.100.202 first
+      setIsPortalModalOpen(true);
+      return;
     }
     setIsOracleReportsPortalOpen(true);
     setIsAdminPanelOpen(false);

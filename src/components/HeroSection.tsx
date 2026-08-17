@@ -104,19 +104,15 @@ export const HeroSection: React.FC<Props> = ({
 
             </div>
 
-            {/* Credential Callout Box */}
+            {/* Security Policy Callout Box */}
             <div className="p-4 rounded-xl bg-slate-900/80 border border-cyan-500/20 text-xs space-y-1 text-slate-300 max-w-xl">
               <div className="flex items-center gap-2 font-semibold text-cyan-300">
                 <Lock className="w-3.5 h-3.5" />
                 <span>Access Control & Security Policy:</span>
               </div>
               <p className="text-slate-400 text-[11px] leading-relaxed">
-                Admins create usernames & passwords and configure granular report permissions (Sales, Inventory, Reactor Production, VAT 201, KYC). IP boundary enforcement restricts off-site access from outside Office Subnet <strong>192.168.100.0/24</strong> unless specifically authorized.
+                Admins provision authorized accounts and configure granular report permissions (Daily Sales & Dispatch, Customer-Wise Sales & Credit, Outstanding Debtors & Aging, Finished Goods Stock, Raw Material Monomer, and Daily Reactor Batch Logs). IP boundary enforcement strictly enforces Office Subnet <strong>192.168.100.0/24</strong> gateway verification.
               </p>
-              <div className="pt-1 flex items-center gap-4 text-[11px] font-mono text-cyan-400">
-                <span>Default Admin: <strong className="text-white">praveen</strong> (or <strong className="text-white">admin</strong>)</span>
-                <span>Email: <strong className="text-white">praveen@falconchemicals.com</strong></span>
-              </div>
             </div>
 
           </div>

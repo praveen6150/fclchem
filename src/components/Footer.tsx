@@ -1,6 +1,7 @@
 import React from 'react';
 import { COMPANY_INFO } from '../data/falconData';
 import { audioEngine } from '../services/audioEngine';
+import { FalconLogo } from './FalconLogo';
 import { Globe, Award, Shield, ArrowUp, ShieldCheck, Lock, Network } from 'lucide-react';
 
 interface Props {
@@ -23,11 +24,9 @@ export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation,
           
           {/* Brand Info */}
           <div className="space-y-3 md:col-span-1">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-cyan-500 text-slate-950 font-black flex items-center justify-center text-sm">
-                F
-              </div>
-              <span className="font-extrabold text-white tracking-wider">
+            <div className="flex items-center gap-2.5">
+              <FalconLogo size="sm" />
+              <span className="font-extrabold text-white tracking-wider text-sm">
                 FALCON CHEMICALS LLC
               </span>
             </div>
@@ -113,15 +112,15 @@ export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation,
           {/* Corporate Headquarters */}
           <div className="space-y-2 text-[11px]">
             <h4 className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
-              Headquarters (DIC, UAE)
+              Headquarters & Plant (DIC, UAE)
             </h4>
             <p className="text-slate-300 font-sans">
-              Plot 531-109, Dubai Industrial City (DIC)<br />
-              P.O. Box 24838, Dubai, United Arab Emirates
+              {COMPANY_INFO.headquarters}<br />
+              {COMPANY_INFO.poBox}
             </p>
             <p className="text-slate-400 font-mono">
-              Tel: +971 4 885 9999<br />
-              Email: info@falconchemicals.com
+              Tel: {COMPANY_INFO.phone}<br />
+              Email: {COMPANY_INFO.email}
             </p>
           </div>
 
@@ -129,7 +128,7 @@ export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation,
 
         {/* Bottom copyright */}
         <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
-          <p>© {new Date().getFullYear()} Falcon Chemicals LLC. All Rights Reserved. www.falconchemicals.com | www.falconchemicals.ae</p>
+          <p>© {new Date().getFullYear()} Falcon Chemicals LLC. All Rights Reserved. www.falconchemicals.com | www.falconchemicals.ae — Developed and maintained by Falcon Chemicals' IT Department.</p>
           
           <button
             onClick={scrollToTop}

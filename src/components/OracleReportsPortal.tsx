@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount, OracleReportItem, OracleModuleId, ReportColumn } from '../types';
 import { ORACLE_REPORT_MODULES, ALL_ORACLE_REPORTS } from '../data/oracleReportsData';
+import { FalconLogo } from './FalconLogo';
 import { 
   Lock, 
   CheckCircle2, 
@@ -75,9 +76,7 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
       {/* 1. TOP BROWSER / ORACLE HEADER BAR */}
       <header className="bg-[#002b49] text-white px-4 sm:px-8 py-3.5 shadow-md flex flex-wrap items-center justify-between gap-3 border-b border-[#001f35]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300 font-bold text-xs">
-            FC
-          </div>
+          <FalconLogo size="sm" />
           <div>
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
               Falcon Chemicals (L.L.C.) — Enterprise Portal for Oracle Reports

@@ -345,10 +345,10 @@ export const COMPANY_INFO = {
   tagline: 'Precision Chemical Solutions for Global Industry',
   established: '1976',
   headquarters: 'Dubai Industrial City, Dubai, United Arab Emirates',
-  phone: '+971 4 885 1200',
-  email: 'sales@falconchemicals.com',
+  phone: '+971 4 8801444',
+  email: 'inquiry@falconchemicals.com',
   websiteMain: 'www.falconchemicals.com',
   websiteRegional: 'www.falconchemicals.ae',
-  poBox: 'P.O. Box 28003, Dubai, U.A.E.',
+  poBox: 'P.O. Box 2924, Dubai, U.A.E.',
   certifications: ['ISO 9001:2015', 'ISO 14001:2015', 'ISO 45001:2018', 'UAE ESMA Certified']
 };

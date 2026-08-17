@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, Radio, Play, Sliders, ShieldCheck, Mail, Network, Building2, Globe2 } from 'lucide-react';
+import { Volume2, VolumeX, Radio, Play, Sliders, ShieldCheck, Network, Building2, Globe2 } from 'lucide-react';
 import { audioEngine } from '../services/audioEngine';
 import { COMPANY_INFO } from '../data/falconData';
+import { FalconLogo } from './FalconLogo';
 
 interface Props {
   isMuted: boolean;
@@ -10,13 +11,13 @@ interface Props {
   onToggleAmbient: () => void;
   onOpenPresentation: () => void;
   onOpenPortal: () => void;
-  onOpenEmailInbox: () => void;
+  onOpenEmailInbox?: () => void;
   onOpenOraclePortal?: () => void;
   currentSimulatedIp: string;
   onToggleSimulatedIp: () => void;
   onNavigateSection: (sectionId: string) => void;
   activeSection: string;
-  unreadEmailCount: number;
+  unreadEmailCount?: number;
 }
 
 export const AudioControlsBar: React.FC<Props> = ({
@@ -26,18 +27,13 @@ export const AudioControlsBar: React.FC<Props> = ({
   onToggleAmbient,
   onOpenPresentation,
   onOpenPortal,
-  onOpenEmailInbox,
   onOpenOraclePortal,
   currentSimulatedIp,
   onToggleSimulatedIp,
   onNavigateSection,
-  activeSection,
-  unreadEmailCount
+  activeSection
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [fxVol, setFxVol] = useState(0.5);
-  const [ambVol, setAmbVol] = useState(0.25);
 
   const isOfficeSubnet = currentSimulatedIp.startsWith('192.168.100.');
 
@@ -90,18 +86,6 @@ export const AudioControlsBar: React.FC<Props> = ({
     onToggleAmbient();
   };
 
-  const handleFxVolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    setFxVol(val);
-    audioEngine.setFxVolume(val);
-  };
-
-  const handleAmbVolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    setAmbVol(val);
-    audioEngine.setAmbientVolume(val);
-  };
-
   const navItems = [
     { id: 'hero', label: 'Overview' },
     { id: 'about', label: 'Corporate Profile' },
@@ -119,9 +103,7 @@ export const AudioControlsBar: React.FC<Props> = ({
               onClick={() => onNavigateSection('hero')}
               className="flex items-center gap-2.5 text-left group"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-amber-500 flex items-center justify-center font-bold text-slate-950 text-xs shadow-md">
-                FC
-              </div>
+              <FalconLogo size="sm" />
               <div>
                 <span className="font-extrabold tracking-wider text-sm sm:text-base text-white group-hover:text-cyan-400 transition-colors">
                   FALCON CHEMICALS
@@ -166,7 +148,7 @@ export const AudioControlsBar: React.FC<Props> = ({
             ))}
           </nav>
 
-          {/* Right Action Tools: IP Switcher, Email Inbox, Sound & Portal Login */}
+          {/* Right Action Tools: IP Switcher, Sound & Portal Login */}
           <div className="flex items-center gap-2">
             
             {/* Host IP Switcher Pill */}
@@ -184,23 +166,6 @@ export const AudioControlsBar: React.FC<Props> = ({
             >
               {isOfficeSubnet ? <Building2 className="w-3.5 h-3.5 text-emerald-400" /> : <Globe2 className="w-3.5 h-3.5 text-amber-400" />}
               <span className="text-[11px]">{currentSimulatedIp}</span>
-            </button>
-
-            {/* Virtual Email Inbox Button */}
-            <button
-              onClick={() => {
-                audioEngine.playNotification();
-                onOpenEmailInbox();
-              }}
-              className="relative p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition-colors"
-              title="noreply@falconchemicals.com Email Inbox"
-            >
-              <Mail className="w-4 h-4" />
-              {unreadEmailCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 text-slate-950 font-bold text-[9px] flex items-center justify-center animate-bounce">
-                  {unreadEmailCount}
-                </span>
-              )}
             </button>
 
             {/* Sound Mute Button */}
@@ -230,7 +195,7 @@ export const AudioControlsBar: React.FC<Props> = ({
               <span>{isAmbientPlaying ? 'Ambient: On' : 'Ambient: Off'}</span>
             </button>
 
-            {/* Oracle Reports Direct Menu (192.168.100.202:8080) */}
+            {/* Oracle Reports Direct Menu (192.168.100.202:8080) Gateway */}
             {onOpenOraclePortal && (
               <button
                 onClick={() => {
@@ -238,7 +203,7 @@ export const AudioControlsBar: React.FC<Props> = ({
                   onOpenOraclePortal();
                 }}
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#002b49] hover:bg-[#003b66] border border-sky-400/40 text-sky-200 hover:text-white text-xs font-bold rounded-lg shadow transition-all cursor-pointer"
-                title="Open Oracle Reporting System (192.168.100.202:8080)"
+                title="Access Oracle Reports (192.168.100.202:8080) - Requires 192.168.100.202 Authentication"
               >
                 <Globe2 className="w-3.5 h-3.5 text-sky-400" />
                 <span>Oracle Reports (192.168.100.202:8080)</span>

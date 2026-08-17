@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount, VirtualEmail, AuditLogEntry } from '../types';
 import { checkIpSubnetMatch } from '../data/usersData';
+import { FalconLogo } from './FalconLogo';
 import { 
   ShieldCheck, 
   Lock, 
@@ -13,10 +14,8 @@ import {
   X, 
   ArrowRight, 
   RefreshCw, 
-  Sparkles,
   Building2,
   Globe2,
-  Smartphone,
   Eye,
   EyeOff
 } from 'lucide-react';
@@ -31,7 +30,7 @@ interface PortalAccessModalProps {
   onLoginSuccess: (user: UserAccount) => void;
   onSendVirtualEmail: (email: VirtualEmail) => void;
   onAddAuditLog: (log: AuditLogEntry) => void;
-  onOpenEmailInbox: () => void;
+  onOpenEmailInbox?: () => void;
 }
 
 type TabType = 'signin' | 'token_login' | 'new_user' | 'recovery';
@@ -44,8 +43,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   onUpdateSimulatedIp,
   onLoginSuccess,
   onSendVirtualEmail,
-  onAddAuditLog,
-  onOpenEmailInbox
+  onAddAuditLog
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('signin');
   
@@ -62,13 +60,14 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   const [tokenStep, setTokenStep] = useState<'request' | 'verify'>('request');
   const [enteredOtp, setEnteredOtp] = useState('');
   const [pendingOtpUser, setPendingOtpUser] = useState<UserAccount | null>(null);
-  const [generatedOtpCode, setGeneratedOtpCode] = useState<string | null>(null);
+  const [activeOtpCode, setActiveOtpCode] = useState<string | null>(null);
 
   // Recovery Form States
   const [recoveryEmailInput, setRecoveryEmailInput] = useState('');
   const [recoveryStep, setRecoveryStep] = useState<'request' | 'verify_reset'>('request');
   const [recoveryOtpInput, setRecoveryOtpInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [activeRecoveryCode, setActiveRecoveryCode] = useState<string | null>(null);
 
   // New User Request States
   const [regFullName, setRegFullName] = useState('');
@@ -79,6 +78,8 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isOfficeSubnet = currentSimulatedIp.startsWith('192.168.100.');
+
   // Handle Standard Password Login
   const handlePasswordSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,14 +88,12 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
     const user = users.find(
       u => u.username.toLowerCase() === usernameInput.trim().toLowerCase() ||
-           u.email.toLowerCase() === usernameInput.trim().toLowerCase() ||
-           (usernameInput.trim().toLowerCase() === 'admin' && u.role === 'admin') ||
-           (usernameInput.trim().toLowerCase() === 'praveen' && u.role === 'admin')
+           u.email.toLowerCase() === usernameInput.trim().toLowerCase()
     );
 
     if (!user) {
       audioEngine.playError();
-      setErrorMessage('Invalid username or corporate email. Please check your credentials.');
+      setErrorMessage('Authentication Failed: Invalid username or corporate email.');
       onAddAuditLog({
         id: `log_${Date.now()}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
@@ -103,7 +102,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         action: 'LOGIN_FAILED_CREDENTIALS',
         ipAddress: currentSimulatedIp,
         ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
-        details: `Failed authentication attempt for "${usernameInput}"`,
+        details: `Failed authentication attempt for identity "${usernameInput}"`,
         status: 'DENIED'
       });
       return;
@@ -111,7 +110,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
     if (user.password !== passwordInput) {
       audioEngine.playError();
-      setErrorMessage('Incorrect password. Please verify or use the Recovery tab.');
+      setErrorMessage('Authentication Failed: Incorrect password provided.');
       onAddAuditLog({
         id: `log_${Date.now()}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
@@ -126,7 +125,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       return;
     }
 
-    // Check IP Subnet Access Control Policy
+    // Check IP Subnet Access Control Policy (192.168.100.0/24 enforcement)
     const ipCheck = checkIpSubnetMatch(currentSimulatedIp, user.ipPolicy, user.customAllowedSubnet);
     if (!ipCheck.allowed) {
       audioEngine.playError();
@@ -139,7 +138,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         to: 'praveen@falconchemicals.com',
         subject: `Security Alert: External IP Blocked for ${user.username}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        bodyText: `Security Policy Violation Detected:\n\nUser: ${user.fullName} (${user.username})\nAttempted IP: ${currentSimulatedIp}\nRequired Subnet: 192.168.100.0/24 (Office LAN)\nTime: ${new Date().toLocaleString()}\n\nThe session was denied.`,
+        bodyText: `Security Policy Violation Detected:\n\nUser: ${user.fullName} (${user.username})\nAttempted IP: ${currentSimulatedIp}\nRequired Subnet: 192.168.100.0/24 (Office LAN)\nTime: ${new Date().toLocaleString()}\n\nThe access request was blocked at 192.168.100.202 gateway.`,
         type: 'ip_security_alert',
         isRead: false
       };
@@ -153,18 +152,17 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         action: 'LOGIN_BLOCKED_IP',
         ipAddress: currentSimulatedIp,
         ipLocationType: 'External Internet / Home WAN',
-        details: `Access Blocked: Policy set to Office Subnet (192.168.100.0/24). Current IP: ${currentSimulatedIp}`,
+        details: `Access Blocked: Policy set to Office Subnet (192.168.100.0/24). Attempted IP: ${currentSimulatedIp}`,
         status: 'DENIED'
       });
       return;
     }
 
-    // Check if user has token-only policy or requires 2FA token
+    // Check if user requires 2FA token
     if (user.authMethod === 'token_otp' || user.authMethod === 'password_plus_token') {
       audioEngine.playNotification();
-      // Generate OTP and switch to token verification
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtpCode(otp);
+      setActiveOtpCode(otp);
       setPendingOtpUser(user);
       setTokenStep('verify');
       setActiveTab('token_login');
@@ -176,7 +174,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         subject: 'Falcon Portal: Your 6-Digit Secure Login Token',
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
         otpCode: otp,
-        bodyText: `Dear ${user.fullName},\n\nYour 6-digit authentication token to access Falcon Chemicals Enterprise Reports is:\n\n${otp}\n\nThis token is valid for 10 minutes from IP: ${currentSimulatedIp}.\n\nFalcon Corporate IT Security - Dubai Industrial City`,
+        bodyText: `Dear ${user.fullName},\n\nYour 6-digit authentication token for Falcon Chemicals Enterprise Reports is:\n\n${otp}\n\nThis token is valid for 10 minutes from gateway IP: ${currentSimulatedIp}.\n\nFalcon Chemicals IT Department - Dubai Industrial City`,
         type: 'otp_login',
         isRead: false
       };
@@ -190,13 +188,13 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         action: 'OTP_SENT',
         ipAddress: currentSimulatedIp,
         ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
-        details: `6-Digit Token dispatched to ${user.email}`,
+        details: `6-Digit authentication token dispatched to ${user.email}`,
         status: 'SUCCESS'
       });
       return;
     }
 
-    // Success Password Login
+    // Successful Password Login
     audioEngine.playSuccess();
     onAddAuditLog({
       id: `log_${Date.now()}`,
@@ -206,7 +204,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       action: 'LOGIN_SUCCESS',
       ipAddress: currentSimulatedIp,
       ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
-      details: `Successful password authentication. Role: ${user.role}. IP Policy: ${user.ipPolicy}`,
+      details: `Successful gateway verification at 192.168.100.202. Role: ${user.role}.`,
       status: 'SUCCESS'
     });
     onLoginSuccess(user);
@@ -219,14 +217,12 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
     const user = users.find(
       u => u.username.toLowerCase() === tokenIdentityInput.trim().toLowerCase() ||
-           u.email.toLowerCase() === tokenIdentityInput.trim().toLowerCase() ||
-           (tokenIdentityInput.trim().toLowerCase() === 'admin' && u.role === 'admin') ||
-           (tokenIdentityInput.trim().toLowerCase() === 'praveen' && u.role === 'admin')
+           u.email.toLowerCase() === tokenIdentityInput.trim().toLowerCase()
     );
 
     if (!user) {
       audioEngine.playError();
-      setErrorMessage('User account not found. Contact Admin Praveen (praveen@falconchemicals.com) for provisioning.');
+      setErrorMessage('User account not found. Please verify your corporate email or contact the IT Department.');
       return;
     }
 
@@ -239,7 +235,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtpCode(otp);
+    setActiveOtpCode(otp);
     setPendingOtpUser(user);
     setTokenStep('verify');
 
@@ -250,12 +246,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       subject: 'Falcon Portal: Your 6-Digit Secure Login Token',
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
       otpCode: otp,
-      bodyText: `Dear ${user.fullName},\n\nYour 6-digit authentication token is:\n\n${otp}\n\nValid for 10 minutes on host IP: ${currentSimulatedIp}.\n\nFalcon Chemicals LLC Enterprise Portal`,
+      bodyText: `Dear ${user.fullName},\n\nYour 6-digit authentication token for Falcon Chemicals Enterprise Reports is:\n\n${otp}\n\nThis token is valid for 10 minutes.\n\nFalcon Chemicals IT Department - Dubai Industrial City`,
       type: 'otp_login',
       isRead: false
     };
     onSendVirtualEmail(otpEmail);
-    audioEngine.playNotification();
 
     onAddAuditLog({
       id: `log_${Date.now()}`,
@@ -265,25 +260,44 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       action: 'OTP_SENT',
       ipAddress: currentSimulatedIp,
       ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
-      details: `OTP Token dispatched to ${user.email}`,
+      details: `6-Digit Token dispatched to ${user.email}`,
       status: 'SUCCESS'
     });
   };
 
-  // Handle Verifying Entered 6-Digit Token
+  // Handle Verifying OTP
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!pendingOtpUser) {
-      setErrorMessage('Session expired. Please request a new token.');
+    if (!pendingOtpUser || !activeOtpCode) {
+      setErrorMessage('Token session expired. Please request a new token.');
       setTokenStep('request');
       return;
     }
 
-    if (enteredOtp.trim() !== generatedOtpCode) {
+    if (enteredOtp.trim() !== activeOtpCode.trim()) {
       audioEngine.playError();
-      setErrorMessage('Invalid or expired 6-digit token. Click "View noreply Inbox" to verify the exact code.');
+      setErrorMessage('Invalid 6-digit authentication token. Please check the code sent to your email.');
+      onAddAuditLog({
+        id: `log_${Date.now()}`,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        username: pendingOtpUser.username,
+        email: pendingOtpUser.email,
+        action: 'OTP_FAILED',
+        ipAddress: currentSimulatedIp,
+        ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
+        details: `Invalid OTP entered for ${pendingOtpUser.username}`,
+        status: 'DENIED'
+      });
+      return;
+    }
+
+    // IP validation check
+    const ipCheck = checkIpSubnetMatch(currentSimulatedIp, pendingOtpUser.ipPolicy, pendingOtpUser.customAllowedSubnet);
+    if (!ipCheck.allowed) {
+      audioEngine.playError();
+      setErrorMessage(ipCheck.reason);
       return;
     }
 
@@ -296,58 +310,26 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       action: 'LOGIN_SUCCESS',
       ipAddress: currentSimulatedIp,
       ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
-      details: 'Token OTP verified successfully. Granted access to dashboard.',
+      details: `OTP authentication verified successfully at 192.168.100.202. Role: ${pendingOtpUser.role}`,
       status: 'SUCCESS'
     });
     onLoginSuccess(pendingOtpUser);
   };
 
-  // Quick Demo Login Helper
-  const handleQuickDemoLogin = (user: UserAccount) => {
-    audioEngine.playClick();
-    setUsernameInput(user.username);
-    setPasswordInput(user.password || '');
-    setTokenIdentityInput(user.username);
-  };
-
-  // Direct Instant Demo Launch Helper
-  const handleInstantDemoLaunch = (user: UserAccount) => {
-    // Check IP
-    const ipCheck = checkIpSubnetMatch(currentSimulatedIp, user.ipPolicy, user.customAllowedSubnet);
-    if (!ipCheck.allowed) {
-      audioEngine.playError();
-      setErrorMessage(ipCheck.reason);
-      return;
-    }
-    audioEngine.playSuccess();
-    onAddAuditLog({
-      id: `log_${Date.now()}`,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      username: user.username,
-      email: user.email,
-      action: 'LOGIN_SUCCESS',
-      ipAddress: currentSimulatedIp,
-      ipLocationType: currentSimulatedIp.startsWith('192.168.100.') ? 'Office LAN (192.168.100.0/24)' : 'External Internet / Home WAN',
-      details: `Quick Demo Switch: ${user.fullName} (${user.role})`,
-      status: 'SUCCESS'
-    });
-    onLoginSuccess(user);
-  };
-
-  // Handle Recovery Request
+  // Handle Requesting Password Recovery
   const handleRequestRecovery = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-    const user = users.find(u => u.email.toLowerCase() === recoveryEmailInput.trim().toLowerCase());
 
+    const user = users.find(u => u.email.toLowerCase() === recoveryEmailInput.trim().toLowerCase());
     if (!user) {
       audioEngine.playError();
-      setErrorMessage('No Falcon account registered with this email address.');
+      setErrorMessage('No account found registered to this corporate email address.');
       return;
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtpCode(otp);
+    setActiveRecoveryCode(otp);
     setPendingOtpUser(user);
     setRecoveryStep('verify_reset');
 
@@ -355,150 +337,97 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       id: `eml_${Date.now()}`,
       from: 'noreply@falconchemicals.com',
       to: user.email,
-      subject: 'Falcon Portal: Password Recovery Code',
+      subject: 'Falcon Portal: Password Reset Verification Code',
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
       otpCode: otp,
-      bodyText: `Dear ${user.fullName},\n\nWe received a password reset request for your account.\n\nYour 6-digit recovery code is:\n${otp}\n\nFalcon Chemicals IT Security`,
+      bodyText: `Dear ${user.fullName},\n\nWe received a password reset request for your account.\n\nYour 6-digit verification code is:\n\n${otp}\n\nEnter this code on the portal to reset your password.\n\nFalcon Chemicals IT Security`,
       type: 'password_recovery',
       isRead: false
     };
     onSendVirtualEmail(recoveryEmail);
-    audioEngine.playNotification();
-    setSuccessMessage(`Recovery code sent to ${user.email}. Check virtual inbox.`);
   };
 
-  // Handle Completing Password Reset
+  // Handle Password Reset Completion
   const handleCompleteReset = (e: React.FormEvent) => {
     e.preventDefault();
-    if (recoveryOtpInput.trim() !== generatedOtpCode) {
-      audioEngine.playError();
-      setErrorMessage('Invalid recovery code.');
-      return;
-    }
-    if (newPasswordInput.length < 6) {
-      audioEngine.playError();
-      setErrorMessage('Password must be at least 6 characters.');
+    setErrorMessage(null);
+
+    if (!pendingOtpUser || !activeRecoveryCode) {
+      setErrorMessage('Reset session expired. Please start over.');
+      setRecoveryStep('request');
       return;
     }
 
-    if (pendingOtpUser) {
-      pendingOtpUser.password = newPasswordInput;
-      audioEngine.playSuccess();
-      setSuccessMessage('Password reset successfully! You may now sign in.');
-      setActiveTab('signin');
-      setUsernameInput(pendingOtpUser.username);
-      setPasswordInput(newPasswordInput);
-      setRecoveryStep('request');
+    if (recoveryOtpInput.trim() !== activeRecoveryCode.trim()) {
+      audioEngine.playError();
+      setErrorMessage('Incorrect verification code. Please check your email.');
+      return;
     }
+
+    if (newPasswordInput.length < 6) {
+      setErrorMessage('Password must contain at least 6 characters.');
+      return;
+    }
+
+    // Update user password in memory
+    pendingOtpUser.password = newPasswordInput;
+    audioEngine.playSuccess();
+    setSuccessMessage('Password reset successfully. You may now sign in with your new credentials.');
+    setActiveTab('signin');
+    setUsernameInput(pendingOtpUser.username);
+    setPasswordInput('');
+    setRecoveryStep('request');
   };
 
-  // Handle New User Registration Request
+  // Handle New User Provisioning Submission
   const handleRegisterRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    audioEngine.playSuccess();
-    setSuccessMessage('Registration request submitted to Chief Admin Praveen (praveen@falconchemicals.com). Once approved and reports are assigned, you will receive an activation email from noreply@falconchemicals.com.');
-    
-    // Notify admin in email
-    const adminNotify: VirtualEmail = {
+    setErrorMessage(null);
+
+    const exists = users.some(u => u.username.toLowerCase() === regUsername.trim().toLowerCase() || u.email.toLowerCase() === regEmail.trim().toLowerCase());
+    if (exists) {
+      setErrorMessage('Username or email already registered in system.');
+      return;
+    }
+
+    const regEmailObj: VirtualEmail = {
       id: `eml_${Date.now()}`,
       from: 'noreply@falconchemicals.com',
       to: 'praveen@falconchemicals.com',
-      subject: `New User Provisioning Request: ${regFullName}`,
+      subject: `New Account Provisioning Request: ${regFullName}`,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      bodyText: `New End-User Registration:\n\nName: ${regFullName}\nUsername: ${regUsername}\nEmail: ${regEmail}\nDept: ${regDepartment}\nRequested Scope: ${regRequestedAccess}\nHost IP: ${currentSimulatedIp}\n\nPlease review and assign report permissions in Admin Access Control.`,
+      bodyText: `New User Provisioning Request:\n\nFull Name: ${regFullName}\nUsername: ${regUsername}\nEmail: ${regEmail}\nDepartment: ${regDepartment}\nRequested Reports: ${regRequestedAccess}\nClient IP: ${currentSimulatedIp}\n\nPlease review in Admin Access Control & RBAC Engine.`,
       type: 'account_created',
       isRead: false
     };
-    onSendVirtualEmail(adminNotify);
+    onSendVirtualEmail(regEmailObj);
+
+    audioEngine.playSuccess();
+    setSuccessMessage('Provisioning request sent to Chief Administrator (Praveen). You will receive credentials once approved.');
+    setRegFullName('');
+    setRegUsername('');
+    setRegEmail('');
   };
 
-  const isOfficeSubnet = currentSimulatedIp.startsWith('192.168.100.');
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-cyan-500/30 rounded-3xl w-full max-w-xl shadow-2xl shadow-cyan-500/10 flex flex-col max-h-[92vh] overflow-hidden">
         
-        {/* Top Glowing Gradient Accent */}
-        <div className="h-1 bg-gradient-to-r from-cyan-500 via-sky-400 to-teal-400 w-full"></div>
-
-        {/* IP Simulator Banner Header */}
-        <div className="bg-slate-950/90 border-b border-slate-800 p-3 px-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <Network className="w-4 h-4 text-cyan-400" />
-            <span className="text-slate-300 font-semibold">Simulated Host Network:</span>
-            <span className={`px-2 py-0.5 rounded font-mono font-bold text-xs flex items-center gap-1.5 ${
-              isOfficeSubnet 
-                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
-                : 'bg-amber-950/80 text-amber-300 border border-amber-500/30'
-            }`}>
-              {isOfficeSubnet ? <Building2 className="w-3 h-3 text-emerald-400" /> : <Globe2 className="w-3 h-3 text-amber-400" />}
-              {currentSimulatedIp}
-              <span className="text-[10px] opacity-80">
-                ({isOfficeSubnet ? 'Office Subnet 192.168.100.0/24' : 'Internet / Home WAN'})
-              </span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-slate-400">Switch IP:</span>
-            <button
-              onClick={() => {
-                audioEngine.playClick();
-                onUpdateSimulatedIp('192.168.100.45');
-              }}
-              className={`px-2 py-1 rounded text-[11px] font-mono transition-all ${
-                isOfficeSubnet
-                  ? 'bg-cyan-500 text-slate-950 font-bold'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-              title="Office LAN 192.168.100.45"
-            >
-              Office IP (.100.45)
-            </button>
-            <button
-              onClick={() => {
-                audioEngine.playClick();
-                onUpdateSimulatedIp('86.96.12.114');
-              }}
-              className={`px-2 py-1 rounded text-[11px] font-mono transition-all ${
-                !isOfficeSubnet
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-              title="External Internet WAN 86.96.12.114"
-            >
-              Remote IP (WAN)
-            </button>
-            <button
-              onClick={() => {
-                audioEngine.playNotification();
-                onOpenEmailInbox();
-              }}
-              className="px-2.5 py-1 bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/40 rounded text-[11px] font-medium flex items-center gap-1 ml-1"
-            >
-              <Mail className="w-3 h-3" />
-              noreply Inbox
-            </button>
-          </div>
-        </div>
-
-        {/* Modal Main Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-b from-slate-900 to-slate-900/60 border-b border-slate-800 flex items-center justify-between">
+        {/* Header with Falcon Logo & Gateway Host */}
+        <div className="p-5 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-inner">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
+            <FalconLogo size="md" />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white tracking-wide">
-                  Falcon Portal Access Engine
-                </h2>
-                <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded">
-                  RBAC & IP Secure
+                <h3 className="font-extrabold text-white text-base tracking-wide">
+                  FALCON CHEMICALS LLC
+                </h3>
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30 rounded-full">
+                  192.168.100.202
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Falcon Chemicals LLC • Enterprise Reports & Access Control Gateway
+                Enterprise Reports & Access Gateway • Dubai Industrial City
               </p>
             </div>
           </div>
@@ -513,22 +442,18 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
           </button>
         </div>
 
-        {/* Quick Demo Logins Ribbon */}
-        <div className="p-2 px-4 bg-slate-950/60 border-b border-slate-800/80 flex items-center gap-2 overflow-x-auto text-xs">
-          <span className="text-[11px] font-semibold text-cyan-400 shrink-0 flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Quick Demo:
+        {/* IP Security Banner */}
+        <div className="px-5 py-2.5 bg-slate-950/70 border-b border-slate-800/80 flex items-center justify-between text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <Network className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-slate-400">Client Host:</span>
+            <strong className={isOfficeSubnet ? 'text-emerald-400' : 'text-amber-400'}>
+              {currentSimulatedIp}
+            </strong>
+          </div>
+          <span className={`text-[11px] px-2 py-0.5 rounded ${isOfficeSubnet ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30' : 'bg-amber-950/60 text-amber-300 border border-amber-500/30'}`}>
+            {isOfficeSubnet ? 'Office LAN Subnet (Authorized)' : 'External Network / WAN'}
           </span>
-          {users.slice(0, 4).map((u) => (
-            <button
-              key={u.id}
-              onClick={() => handleInstantDemoLaunch(u)}
-              className="px-2.5 py-1 bg-slate-800/80 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500/40 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center gap-1.5"
-              title={`Role: ${u.role} | IP Policy: ${u.ipPolicy}`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${u.role === 'admin' ? 'bg-amber-400' : 'bg-cyan-400'}`}></span>
-              {u.fullName.split(' ')[0]} ({u.role})
-            </button>
-          ))}
         </div>
 
         {/* Navigation Tabs */}
@@ -538,6 +463,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               audioEngine.playClick();
               setActiveTab('signin');
               setErrorMessage(null);
+              setSuccessMessage(null);
             }}
             className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'signin'
@@ -554,6 +480,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               audioEngine.playClick();
               setActiveTab('token_login');
               setErrorMessage(null);
+              setSuccessMessage(null);
             }}
             className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'token_login'
@@ -570,6 +497,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               audioEngine.playClick();
               setActiveTab('new_user');
               setErrorMessage(null);
+              setSuccessMessage(null);
             }}
             className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'new_user'
@@ -586,6 +514,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               audioEngine.playClick();
               setActiveTab('recovery');
               setErrorMessage(null);
+              setSuccessMessage(null);
             }}
             className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'recovery'
@@ -637,7 +566,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                     required
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="e.g. admin or tariq.mansoor"
+                    placeholder="Enter corporate username or email"
                     className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
@@ -694,36 +623,14 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                 </span>
               </div>
 
-              <div className="pt-2 flex items-center gap-3">
+              <div className="pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Lock className="w-4 h-4" />
-                  Authenticate & View Reports
+                  Verify Gateway Access & View Reports
                 </button>
-              </div>
-
-              {/* Admin Default Credentials Helper Box */}
-              <div className="p-3 bg-slate-950/80 border border-cyan-500/20 rounded-xl text-xs space-y-1 text-slate-300">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-cyan-300">Default Chief Admin Credentials:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      audioEngine.playClick();
-                      setUsernameInput('praveen');
-                      setPasswordInput('FalconAdmin@2026');
-                    }}
-                    className="text-cyan-400 hover:text-cyan-300 font-medium hover:underline text-[11px]"
-                  >
-                    Auto-Fill Praveen (Admin)
-                  </button>
-                </div>
-                <div className="font-mono text-slate-400 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
-                  <span>User: <strong className="text-white">praveen</strong> (or admin)</span>
-                  <span>Email: <strong className="text-white">praveen@falconchemicals.com</strong></span>
-                </div>
               </div>
             </form>
           )}
@@ -734,28 +641,16 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               {tokenStep === 'request' ? (
                 <form onSubmit={handleRequestToken} className="space-y-4">
                   <div className="p-3 bg-cyan-950/30 border border-cyan-500/20 rounded-xl text-xs text-slate-300 space-y-1">
-                    <p className="font-semibold text-cyan-300">Zero-Password Token Login</p>
+                    <p className="font-semibold text-cyan-300">Zero-Password Token Authentication</p>
                     <p className="text-slate-400 leading-relaxed">
-                      Enter your corporate username or email to receive a secure 6-digit authentication token from <strong>noreply@falconchemicals.com</strong>.
+                      Enter your registered corporate email to receive a secure 6-digit authentication token from <strong>noreply@falconchemicals.com</strong>.
                     </p>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-semibold text-slate-300">
-                        Username or Corporate Email
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          audioEngine.playClick();
-                          setTokenIdentityInput('praveen@falconchemicals.com');
-                        }}
-                        className="text-[11px] text-cyan-400 hover:underline"
-                      >
-                        Auto-Fill praveen@falconchemicals.com
-                      </button>
-                    </div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Corporate Email Address
+                    </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -763,7 +658,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                         required
                         value={tokenIdentityInput}
                         onChange={(e) => setTokenIdentityInput(e.target.value)}
-                        placeholder="e.g. praveen@falconchemicals.com or tariq.mansoor@falconchemicals.com"
+                        placeholder="name@falconchemicals.com"
                         className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all"
                       />
                     </div>
@@ -771,43 +666,22 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Mail className="w-4 h-4" />
-                    Dispatch 6-Digit Login Token
+                    Dispatch 6-Digit Authentication Token
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="p-3 bg-emerald-950/30 border border-emerald-500/30 rounded-xl text-xs text-slate-300 flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-emerald-300">Token Dispatched to {pendingOtpUser?.email}</p>
-                      <p className="text-slate-400 text-[11px]">Valid for 10 minutes</p>
+                  <div className="p-3.5 bg-cyan-950/40 border border-cyan-500/30 rounded-xl text-xs text-slate-300 space-y-1">
+                    <div className="flex items-center gap-2 text-cyan-300 font-semibold">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Security Token Dispatched</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {generatedOtpCode && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            audioEngine.playClick();
-                            setEnteredOtp(generatedOtpCode);
-                          }}
-                          className="px-2.5 py-1 bg-emerald-700/60 hover:bg-emerald-600 border border-emerald-500/50 text-emerald-100 rounded text-xs font-semibold shadow transition-colors"
-                        >
-                          Auto-Paste ({generatedOtpCode})
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          audioEngine.playNotification();
-                          onOpenEmailInbox();
-                        }}
-                        className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-semibold shadow transition-colors"
-                      >
-                        View noreply Inbox
-                      </button>
-                    </div>
+                    <p className="text-slate-400 text-[11px] leading-relaxed">
+                      A 6-digit one-time security token has been securely dispatched to your registered corporate email ({pendingOtpUser?.email}). Please enter the token below to complete authentication.
+                    </p>
                   </div>
 
                   <div>
@@ -820,7 +694,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                       maxLength={6}
                       value={enteredOtp}
                       onChange={(e) => setEnteredOtp(e.target.value)}
-                      placeholder="8 4 9 2 0 1"
+                      placeholder="• • • • • •"
                       className="w-full bg-slate-950 border border-cyan-500/50 focus:border-cyan-400 rounded-xl py-3 text-center text-2xl font-mono tracking-widest text-cyan-300 placeholder-slate-600 outline-none"
                     />
                   </div>
@@ -838,7 +712,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm rounded-xl flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/30 cursor-pointer"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       Verify Token & Access Dashboard
@@ -926,14 +800,14 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                   type="text"
                   value={regRequestedAccess}
                   onChange={(e) => setRegRequestedAccess(e.target.value)}
-                  placeholder="e.g. Daily Sales, Finished Goods Stock, KYC"
+                  placeholder="e.g. Daily Sales & Dispatch, Finished Goods Stock, Reactor Logs"
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-400"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <User className="w-4 h-4" />
                 Submit Provisioning Request
@@ -947,7 +821,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               {recoveryStep === 'request' ? (
                 <form onSubmit={handleRequestRecovery} className="space-y-4">
                   <div className="p-3 bg-slate-950/60 border border-cyan-500/20 rounded-xl text-xs text-slate-300">
-                    <p className="font-semibold text-cyan-300 mb-1">Email Recovery Protocol (KYC.zip specification)</p>
+                    <p className="font-semibold text-cyan-300 mb-1">Corporate Recovery Protocol</p>
                     <p className="text-slate-400 leading-relaxed">
                       Recovery tokens are dispatched from <strong>noreply@falconchemicals.com</strong> with cryptographic validation.
                     </p>
@@ -964,7 +838,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                         required
                         value={recoveryEmailInput}
                         onChange={(e) => setRecoveryEmailInput(e.target.value)}
-                        placeholder="praveen@falconchemicals.com"
+                        placeholder="name@falconchemicals.com"
                         className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none"
                       />
                     </div>
@@ -972,7 +846,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Send Verification Code from noreply@
@@ -980,20 +854,14 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                 </form>
               ) : (
                 <form onSubmit={handleCompleteReset} className="space-y-3.5">
-                  <div className="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-xl text-xs text-slate-300 flex items-center justify-between">
-                    <span>Recovery OTP sent to {pendingOtpUser?.email}</span>
-                    <button
-                      type="button"
-                      onClick={onOpenEmailInbox}
-                      className="px-2 py-0.5 bg-cyan-600 text-white rounded text-[11px] font-semibold"
-                    >
-                      View Inbox
-                    </button>
+                  <div className="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-xl text-xs text-slate-300">
+                    <p className="font-semibold text-cyan-300">Verification Code Dispatched</p>
+                    <p className="text-slate-400 text-[11px]">Enter the 6-digit recovery code sent to your registered email.</p>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Enter Recovery OTP Code
+                      Enter Recovery Code
                     </label>
                     <input
                       type="text"
@@ -1021,7 +889,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow transition-all"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl shadow transition-all cursor-pointer"
                   >
                     Confirm & Update Password
                   </button>

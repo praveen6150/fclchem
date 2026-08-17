@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserAccount, AuditLogEntry, VirtualEmail, IPAccessPolicy, AuthMethod, RoleType } from '../types';
 import { FALCON_REPORTS } from '../data/reportsData';
 import { ORACLE_REPORT_MODULES, ALL_ORACLE_REPORTS, DEFAULT_ALL_ORACLE_REPORT_IDS } from '../data/oracleReportsData';
+import { FalconLogo } from './FalconLogo';
 import { 
   Users, 
   ShieldCheck, 
@@ -286,18 +287,21 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
 
           <div className="h-5 w-px bg-slate-800"></div>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-bold text-white tracking-wide">
-                Admin Access Control & RBAC Policy Engine
-              </h1>
-              <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded">
-                Admin: Praveen
-              </span>
+          <div className="flex items-center gap-3">
+            <FalconLogo size="sm" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base font-bold text-white tracking-wide">
+                  Admin Access Control & RBAC Policy Engine
+                </h1>
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded">
+                  Admin: Praveen
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Granular Oracle Report Permissions • IP Subnet Authorization (192.168.100.0/24)
+              </p>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Granular Oracle Report Permissions • IP Subnet Authorization (192.168.100.0/24)
-            </p>
           </div>
         </div>
 

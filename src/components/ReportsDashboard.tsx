@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { UserAccount, ReportDefinition, ReportCategory } from '../types';
 import { FALCON_REPORTS } from '../data/reportsData';
+import { FalconLogo } from './FalconLogo';
 import { 
   FileText, 
   BarChart3, 
@@ -126,9 +127,7 @@ export const ReportsDashboard: React.FC<ReportsDashboardProps> = ({
         
         {/* Left: Branding & User Role */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center text-slate-950 font-bold shadow-md">
-            FCL
-          </div>
+          <FalconLogo size="md" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-bold text-white tracking-wide">
