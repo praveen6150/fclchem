@@ -5,6 +5,27 @@ import { ALL_ORACLE_REPORTS } from './oracleReportsData';
 export const INITIAL_USERS: UserAccount[] = [
   {
     id: 'usr_admin_01',
+    username: 'admin',
+    fullName: 'Praveen (Chief Admin)',
+    email: 'praveen@falconchemicals.com',
+    password: 'FalconAdmin@2026',
+    role: 'admin',
+    department: 'Executive IT & Corporate Security',
+    companyOrBranch: 'Falcon Chemicals LLC HQ - Dubai',
+    isActive: true,
+    authMethod: 'password_plus_token',
+    ipPolicy: 'office_only',
+    customAllowedSubnet: '192.168.100.0/24',
+    allowedReportIds: [
+      ...FALCON_REPORTS.map(r => r.id),
+      ...ALL_ORACLE_REPORTS.map(r => r.id)
+    ],
+    createdDate: '2025-01-10',
+    lastLogin: '2026-08-16 10:14:22',
+    lastLoginIp: '192.168.100.15'
+  },
+  {
+    id: 'usr_admin_01_alias',
     username: 'praveen',
     fullName: 'Praveen (Chief Admin)',
     email: 'praveen@falconchemicals.com',

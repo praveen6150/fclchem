@@ -32,7 +32,15 @@ export default function App() {
     try {
       const saved = localStorage.getItem(STORAGE_USERS);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed: UserAccount[] = JSON.parse(saved);
+        // Ensure admin and praveen exist in user list
+        const hasAdmin = parsed.some(u => u.username.toLowerCase() === 'admin');
+        const hasPraveen = parsed.some(u => u.username.toLowerCase() === 'praveen');
+        if (!hasAdmin || !hasPraveen) {
+          const missing = INITIAL_USERS.filter(iu => !parsed.some(p => p.id === iu.id || p.username.toLowerCase() === iu.username.toLowerCase()));
+          return [...parsed, ...missing];
+        }
+        return parsed;
       }
     } catch (e) {
       console.warn('Could not parse saved users, falling back to initial.', e);

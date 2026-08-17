@@ -17,7 +17,8 @@ import {
   Building2,
   Globe2,
   Eye,
-  EyeOff
+  EyeOff,
+  Send
 } from 'lucide-react';
 import { audioEngine } from '../services/audioEngine';
 
@@ -34,6 +35,34 @@ interface PortalAccessModalProps {
 }
 
 type TabType = 'signin' | 'token_login' | 'new_user' | 'recovery';
+
+// Helper to look up user account with comprehensive alias matching (admin, praveen, email, etc.)
+export const lookupUserAccount = (identity: string, userList: UserAccount[]): UserAccount | undefined => {
+  const clean = identity.trim().toLowerCase();
+  if (!clean) return undefined;
+
+  // 1. Direct username or email match
+  const directMatch = userList.find(
+    u => u.username.toLowerCase() === clean || u.email.toLowerCase() === clean
+  );
+  if (directMatch) return directMatch;
+
+  // 2. Admin / Praveen aliases
+  if (
+    clean === 'admin' || 
+    clean === 'praveen' || 
+    clean === 'admin@falconchemicals.com' || 
+    clean === 'praveen@falconchemicals.com' ||
+    clean === 'praveen6150@gmail.com' ||
+    clean.startsWith('admin') ||
+    clean.startsWith('praveen')
+  ) {
+    return userList.find(u => u.role === 'admin' || u.username === 'admin' || u.username === 'praveen') || userList[0];
+  }
+
+  // 3. Fallback partial username match
+  return userList.find(u => u.username.toLowerCase().includes(clean) || u.fullName.toLowerCase().includes(clean));
+};
 
 export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   isOpen,
@@ -54,6 +83,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // OTP Token Login States
   const [tokenIdentityInput, setTokenIdentityInput] = useState('');
@@ -80,16 +110,34 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
   const isOfficeSubnet = currentSimulatedIp.startsWith('192.168.100.');
 
+  // Dispatches email to both local memory store and backend server API for real SMTP delivery
+  const dispatchEmailWithServerRelay = async (email: VirtualEmail) => {
+    onSendVirtualEmail(email);
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email.to,
+          subject: email.subject,
+          bodyText: email.bodyText,
+          otpCode: email.otpCode,
+          type: email.type
+        })
+      });
+    } catch (err) {
+      console.warn('[Falcon Portal] Real SMTP background relay notice:', err);
+    }
+  };
+
   // Handle Standard Password Login
-  const handlePasswordSignIn = (e: React.FormEvent) => {
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+    setIsSubmitting(true);
 
-    const user = users.find(
-      u => u.username.toLowerCase() === usernameInput.trim().toLowerCase() ||
-           u.email.toLowerCase() === usernameInput.trim().toLowerCase()
-    );
+    const user = lookupUserAccount(usernameInput, users);
 
     if (!user) {
       audioEngine.playError();
@@ -105,9 +153,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         details: `Failed authentication attempt for identity "${usernameInput}"`,
         status: 'DENIED'
       });
+      setIsSubmitting(false);
       return;
     }
 
+    // Check Password
     if (user.password !== passwordInput) {
       audioEngine.playError();
       setErrorMessage('Authentication Failed: Incorrect password provided.');
@@ -122,6 +172,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         details: `Incorrect password provided for user "${user.username}"`,
         status: 'DENIED'
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -142,7 +193,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         type: 'ip_security_alert',
         isRead: false
       };
-      onSendVirtualEmail(alertEmail);
+      await dispatchEmailWithServerRelay(alertEmail);
 
       onAddAuditLog({
         id: `log_${Date.now()}`,
@@ -155,10 +206,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         details: `Access Blocked: Policy set to Office Subnet (192.168.100.0/24). Attempted IP: ${currentSimulatedIp}`,
         status: 'DENIED'
       });
+      setIsSubmitting(false);
       return;
     }
 
-    // Check if user requires 2FA token
+    // Check if user requires 2FA token (like admin / praveen with password_plus_token)
     if (user.authMethod === 'token_otp' || user.authMethod === 'password_plus_token') {
       audioEngine.playNotification();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -178,7 +230,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         type: 'otp_login',
         isRead: false
       };
-      onSendVirtualEmail(otpEmail);
+      await dispatchEmailWithServerRelay(otpEmail);
 
       onAddAuditLog({
         id: `log_${Date.now()}`,
@@ -191,6 +243,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
         details: `6-Digit authentication token dispatched to ${user.email}`,
         status: 'SUCCESS'
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -207,22 +260,22 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       details: `Successful gateway verification at 192.168.100.202. Role: ${user.role}.`,
       status: 'SUCCESS'
     });
+    setIsSubmitting(false);
     onLoginSuccess(user);
   };
 
   // Handle Requesting 6-Digit OTP Token
-  const handleRequestToken = (e: React.FormEvent) => {
+  const handleRequestToken = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsSubmitting(true);
 
-    const user = users.find(
-      u => u.username.toLowerCase() === tokenIdentityInput.trim().toLowerCase() ||
-           u.email.toLowerCase() === tokenIdentityInput.trim().toLowerCase()
-    );
+    const user = lookupUserAccount(tokenIdentityInput, users);
 
     if (!user) {
       audioEngine.playError();
       setErrorMessage('User account not found. Please verify your corporate email or contact the IT Department.');
+      setIsSubmitting(false);
       return;
     }
 
@@ -231,6 +284,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
     if (!ipCheck.allowed) {
       audioEngine.playError();
       setErrorMessage(ipCheck.reason);
+      setIsSubmitting(false);
       return;
     }
 
@@ -250,7 +304,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       type: 'otp_login',
       isRead: false
     };
-    onSendVirtualEmail(otpEmail);
+    await dispatchEmailWithServerRelay(otpEmail);
 
     onAddAuditLog({
       id: `log_${Date.now()}`,
@@ -263,6 +317,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       details: `6-Digit Token dispatched to ${user.email}`,
       status: 'SUCCESS'
     });
+    setIsSubmitting(false);
   };
 
   // Handle Verifying OTP
@@ -317,14 +372,16 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   };
 
   // Handle Requesting Password Recovery
-  const handleRequestRecovery = (e: React.FormEvent) => {
+  const handleRequestRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsSubmitting(true);
 
-    const user = users.find(u => u.email.toLowerCase() === recoveryEmailInput.trim().toLowerCase());
+    const user = lookupUserAccount(recoveryEmailInput, users);
     if (!user) {
       audioEngine.playError();
       setErrorMessage('No account found registered to this corporate email address.');
+      setIsSubmitting(false);
       return;
     }
 
@@ -344,7 +401,8 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       type: 'password_recovery',
       isRead: false
     };
-    onSendVirtualEmail(recoveryEmail);
+    await dispatchEmailWithServerRelay(recoveryEmail);
+    setIsSubmitting(false);
   };
 
   // Handle Password Reset Completion
@@ -380,13 +438,15 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   };
 
   // Handle New User Provisioning Submission
-  const handleRegisterRequest = (e: React.FormEvent) => {
+  const handleRegisterRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsSubmitting(true);
 
     const exists = users.some(u => u.username.toLowerCase() === regUsername.trim().toLowerCase() || u.email.toLowerCase() === regEmail.trim().toLowerCase());
     if (exists) {
       setErrorMessage('Username or email already registered in system.');
+      setIsSubmitting(false);
       return;
     }
 
@@ -400,13 +460,14 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       type: 'account_created',
       isRead: false
     };
-    onSendVirtualEmail(regEmailObj);
+    await dispatchEmailWithServerRelay(regEmailObj);
 
     audioEngine.playSuccess();
     setSuccessMessage('Provisioning request sent to Chief Administrator (Praveen). You will receive credentials once approved.');
     setRegFullName('');
     setRegUsername('');
     setRegEmail('');
+    setIsSubmitting(false);
   };
 
   return (
@@ -566,7 +627,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                     required
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="Enter corporate username or email"
+                    placeholder="e.g. admin or praveen"
                     className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
@@ -626,10 +687,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Lock className="w-4 h-4" />
-                  Verify Gateway Access & View Reports
+                  {isSubmitting ? 'Verifying Gateway...' : 'Verify Gateway Access & View Reports'}
                 </button>
               </div>
             </form>
@@ -641,15 +703,15 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
               {tokenStep === 'request' ? (
                 <form onSubmit={handleRequestToken} className="space-y-4">
                   <div className="p-3 bg-cyan-950/30 border border-cyan-500/20 rounded-xl text-xs text-slate-300 space-y-1">
-                    <p className="font-semibold text-cyan-300">Zero-Password Token Authentication</p>
+                    <p className="font-semibold text-cyan-300">Corporate Token Authentication</p>
                     <p className="text-slate-400 leading-relaxed">
-                      Enter your registered corporate email to receive a secure 6-digit authentication token from <strong>noreply@falconchemicals.com</strong>.
+                      Enter your corporate username (e.g. <strong>admin</strong>, <strong>praveen</strong>) or email to receive a secure 6-digit one-time token from <strong>noreply@falconchemicals.com</strong>.
                     </p>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Corporate Email Address
+                      Corporate Username or Email Address
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -658,7 +720,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                         required
                         value={tokenIdentityInput}
                         onChange={(e) => setTokenIdentityInput(e.target.value)}
-                        placeholder="name@falconchemicals.com"
+                        placeholder="e.g. admin or praveen@falconchemicals.com"
                         className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all"
                       />
                     </div>
@@ -666,10 +728,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={isSubmitting}
+                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    <Mail className="w-4 h-4" />
-                    Dispatch 6-Digit Authentication Token
+                    <Send className="w-4 h-4" />
+                    {isSubmitting ? 'Dispatching Token...' : 'Dispatch 6-Digit Authentication Token'}
                   </button>
                 </form>
               ) : (
@@ -680,7 +743,7 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
                       <span>Security Token Dispatched</span>
                     </div>
                     <p className="text-slate-400 text-[11px] leading-relaxed">
-                      A 6-digit one-time security token has been securely dispatched to your registered corporate email ({pendingOtpUser?.email}). Please enter the token below to complete authentication.
+                      A 6-digit one-time security token has been securely dispatched from <strong>noreply@falconchemicals.com</strong> to your registered corporate email (<strong className="text-cyan-300">{pendingOtpUser?.email}</strong>).
                     </p>
                   </div>
 
@@ -807,10 +870,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <User className="w-4 h-4" />
-                Submit Provisioning Request
+                {isSubmitting ? 'Submitting Request...' : 'Submit Provisioning Request'}
               </button>
             </form>
           )}
@@ -829,16 +893,16 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Registered Corporate Email
+                      Registered Corporate Email or Username
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
-                        type="email"
+                        type="text"
                         required
                         value={recoveryEmailInput}
                         onChange={(e) => setRecoveryEmailInput(e.target.value)}
-                        placeholder="name@falconchemicals.com"
+                        placeholder="e.g. admin or praveen@falconchemicals.com"
                         className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none"
                       />
                     </div>
@@ -846,10 +910,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={isSubmitting}
+                    className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-semibold text-sm rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw className="w-4 h-4" />
-                    Send Verification Code from noreply@
+                    {isSubmitting ? 'Sending Code...' : 'Send Verification Code from noreply@'}
                   </button>
                 </form>
               ) : (
