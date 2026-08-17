@@ -1,6 +1,6 @@
 {
   "name": "Falcon Chemicals LLC",
-  "description": "Dynamic corporate ambient presentation website for Falcon Chemicals LLC with interactive audio feedback.",
+  "description": "Corporate presentation website and enterprise reports portal for Falcon Chemicals LLC with RBAC access control, IP subnet restriction, and token verification.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

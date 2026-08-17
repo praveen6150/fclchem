@@ -1,16 +1,17 @@
 import React from 'react';
 import { COMPANY_INFO } from '../data/falconData';
 import { audioEngine } from '../services/audioEngine';
-import { Globe, Award, Shield, ArrowUp } from 'lucide-react';
+import { Globe, Award, Shield, ArrowUp, ShieldCheck, Lock, Network } from 'lucide-react';
 
 interface Props {
   onNavigateSection: (sectionId: string) => void;
   onOpenPresentation: () => void;
+  onOpenPortal: () => void;
 }
 
-export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation }) => {
+export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation, onOpenPortal }) => {
   const scrollToTop = () => {
-    audioEngine.playClickSound();
+    audioEngine.playClick();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -23,7 +24,7 @@ export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation 
           {/* Brand Info */}
           <div className="space-y-3 md:col-span-1">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-amber-500 text-slate-950 font-black flex items-center justify-center text-sm">
+              <div className="w-7 h-7 rounded bg-cyan-500 text-slate-950 font-black flex items-center justify-center text-sm">
                 F
               </div>
               <span className="font-extrabold text-white tracking-wider">
@@ -31,9 +32,9 @@ export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation 
               </span>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-              Precision adhesive, sealant, waterproofing, and industrial coating solutions manufactured in Dubai, UAE since {COMPANY_INFO.established}.
+              Precision adhesive, sealant, waterproofing, and specialized chemical solutions manufactured in Dubai Industrial City, UAE since {COMPANY_INFO.established}.
             </p>
-            <div className="text-[10px] text-amber-400 font-mono">
+            <div className="text-[10px] text-cyan-400 font-mono">
               ISO 9001:2015 & ISO 14001:2015
             </div>
           </div>
@@ -41,120 +42,102 @@ export const Footer: React.FC<Props> = ({ onNavigateSection, onOpenPresentation 
           {/* Quick Links */}
           <div className="space-y-2">
             <h4 className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
-              Navigation
+              Corporate Gateway
             </h4>
             <ul className="space-y-1.5 text-slate-300">
               <li>
                 <button
                   onClick={() => {
-                    audioEngine.playClickSound();
-                    onNavigateSection('hero');
+                    audioEngine.playClick();
+                    onOpenPortal();
                   }}
-                  className="hover:text-amber-400 transition-colors"
+                  className="hover:text-cyan-400 transition-colors text-cyan-300 font-medium flex items-center gap-1.5"
                 >
-                  Overview & Facility
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Portal & Reports Login</span>
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => {
-                    audioEngine.playClickSound();
-                    onNavigateSection('products');
-                  }}
-                  className="hover:text-amber-400 transition-colors"
-                >
-                  Product Catalog
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    audioEngine.playClickSound();
+                    audioEngine.playClick();
                     onOpenPresentation();
                   }}
-                  className="hover:text-amber-400 transition-colors text-amber-300 font-medium flex items-center gap-1"
+                  className="hover:text-cyan-400 transition-colors flex items-center gap-1"
                 >
-                  <span>Video Presentation Mode</span>
+                  <span>Presentation Mode</span>
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => {
-                    audioEngine.playClickSound();
+                    audioEngine.playClick();
                     onNavigateSection('about');
                   }}
-                  className="hover:text-amber-400 transition-colors"
+                  className="hover:text-cyan-400 transition-colors"
                 >
-                  About Falcon UAE
+                  Corporate Profile
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => {
-                    audioEngine.playClickSound();
+                    audioEngine.playClick();
                     onNavigateSection('contact');
                   }}
-                  className="hover:text-amber-400 transition-colors"
+                  className="hover:text-cyan-400 transition-colors"
                 >
-                  Inquiry & Quote
+                  Inquiry & Technical Support
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Portals & Official Websites */}
+          {/* Network Security Boundary */}
           <div className="space-y-2">
             <h4 className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
-              Official Portals
+              Security Boundary
             </h4>
-            <ul className="space-y-1.5 text-slate-300 font-mono">
-              <li className="flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-amber-400" />
-                <a href="https://www.falconchemicals.com" target="_blank" rel="noreferrer" className="hover:text-amber-300">
-                  {COMPANY_INFO.websiteMain}
-                </a>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-amber-400" />
-                <a href="https://www.falconchemicals.ae" target="_blank" rel="noreferrer" className="hover:text-amber-300">
-                  {COMPANY_INFO.websiteRegional}
-                </a>
-              </li>
-              <li className="pt-2 text-[10px] text-slate-400">
-                Dubai Industrial City, Dubai, UAE
-              </li>
-            </ul>
+            <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+              Access to production reactors, inventory stock registers, and UAE VAT 201 returns is strictly governed by RBAC and IP subnet checks.
+            </p>
+            <div className="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5">
+              <Network className="w-3 h-3" />
+              <span>Office Subnet: 192.168.100.0/24</span>
+            </div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              Email Dispatch: noreply@falconchemicals.com
+            </div>
           </div>
 
-          {/* Audio Engine & Scroll */}
-          <div className="space-y-3 flex flex-col justify-between">
-            <div>
-              <h4 className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
-                Audio Synthesizer HUD
-              </h4>
-              <p className="text-[10px] text-slate-400 leading-relaxed font-mono mt-1">
-                Integrated Web Audio API sound feedback engine synced to interactive clicks & presentation mode.
-              </p>
-            </div>
-
-            <button
-              onClick={scrollToTop}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 font-mono text-[11px] transition-all self-start"
-            >
-              <ArrowUp className="w-3.5 h-3.5 text-amber-400" />
-              <span>Back to Top</span>
-            </button>
+          {/* Corporate Headquarters */}
+          <div className="space-y-2 text-[11px]">
+            <h4 className="font-bold text-white uppercase text-[11px] tracking-wider font-mono">
+              Headquarters (DIC, UAE)
+            </h4>
+            <p className="text-slate-300 font-sans">
+              Plot 531-109, Dubai Industrial City (DIC)<br />
+              P.O. Box 24838, Dubai, United Arab Emirates
+            </p>
+            <p className="text-slate-400 font-mono">
+              Tel: +971 4 885 9999<br />
+              Email: info@falconchemicals.com
+            </p>
           </div>
 
         </div>
 
-        <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400 font-mono">
-          <div>
-            © {new Date().getFullYear()} {COMPANY_INFO.name}. All Rights Reserved.
-          </div>
-          <div>
-            Dubai Industrial City • P.O. Box 28003 • Dubai, U.A.E.
-          </div>
+        {/* Bottom copyright */}
+        <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
+          <p>© {new Date().getFullYear()} Falcon Chemicals LLC. All Rights Reserved. www.falconchemicals.com | www.falconchemicals.ae</p>
+          
+          <button
+            onClick={scrollToTop}
+            className="flex items-center gap-1 text-slate-400 hover:text-cyan-400 transition-colors"
+          >
+            <span>Back to top</span>
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
         </div>
 
       </div>

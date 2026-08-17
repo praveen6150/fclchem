@@ -211,6 +211,69 @@ class CorporateAudioEngine {
     });
   }
 
+  // Aliases & Additional Security Synthesizer Feedback
+  public playClick() {
+    this.playClickSound();
+  }
+
+  public playHover() {
+    this.playHoverSound();
+  }
+
+  public playSuccess() {
+    this.playSuccessSound();
+  }
+
+  // Security Error / Access Denied low buzzer
+  public playError() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx || !this.fxGain) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.linearRampToValueAtTime(95, now + 0.2);
+
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+    osc.connect(gain);
+    gain.connect(this.fxGain);
+
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  // Notification Chime (for incoming virtual email OTP token)
+  public playNotification() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx || !this.fxGain) return;
+
+    const now = this.ctx.currentTime;
+    [587.33, 880.00].forEach((freq, idx) => {
+      if (!this.ctx || !this.fxGain) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+      gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35 + idx * 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.fxGain);
+
+      osc.start(now + idx * 0.08);
+      osc.stop(now + 0.4 + idx * 0.08);
+    });
+  }
+
   // --- Corporate Ambient Pad Soundtrack ---
 
   public startAmbientPad() {
