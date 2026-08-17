@@ -11,17 +11,18 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Helper function to get SMTP Transporter matching /etc/fcl1/.env
+// Helper function to get SMTP Transporter matching Office 365 & /etc/postfix/sasl_passwd
 function getMailTransporter() {
-  const host = process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.falconchemicals.com';
+  const host = process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.office365.com';
   const port = parseInt(process.env.MAIL_PORT || process.env.SMTP_PORT || '587', 10);
   const encryption = (process.env.MAIL_ENCRYPTION || 'tls').toLowerCase();
   const secure = encryption === 'ssl' || port === 465;
-  const user = process.env.MAIL_USER || process.env.SMTP_USER || process.env.NOREPLY_EMAIL || 'noreply@falconchemicals.com';
+  const user = process.env.MAIL_USER || process.env.SMTP_USER || 'inquiry@falconchemicals.com';
   const pass = 
     process.env.MAIL_PASS || 
-    process.env.NOREPLY_EMAIL_PASS || 
     process.env.SMTP_PASS || 
+    process.env.SASL_PASSWD || 
+    process.env.NOREPLY_EMAIL_PASS || 
     process.env.MAIL_PASSWORD || 
     process.env.EMAIL_PASS || 
     process.env.SMTP_PASSWORD || 
@@ -29,7 +30,7 @@ function getMailTransporter() {
     '';
 
   if (!pass) {
-    console.warn('[Falcon Mailer] Warning: No MAIL_PASS / SMTP password configured in environment variables.');
+    console.warn('[Falcon Mailer] Warning: No MAIL_PASS / SMTP password configured in environment secrets.');
   }
 
   return nodemailer.createTransport({
@@ -39,7 +40,8 @@ function getMailTransporter() {
     requireTLS: port === 587 || encryption === 'tls',
     auth: pass ? { user, pass } : undefined,
     tls: {
-      rejectUnauthorized: false // Allow self-signed or enterprise internal certificates
+      ciphers: 'SSLv3',
+      rejectUnauthorized: false
     }
   });
 }
@@ -48,8 +50,9 @@ function getMailTransporter() {
 app.get('/api/health', (req, res) => {
   const pass = 
     process.env.MAIL_PASS || 
-    process.env.NOREPLY_EMAIL_PASS || 
     process.env.SMTP_PASS || 
+    process.env.SASL_PASSWD || 
+    process.env.NOREPLY_EMAIL_PASS || 
     process.env.MAIL_PASSWORD || 
     process.env.EMAIL_PASS || 
     process.env.SMTP_PASSWORD || 
@@ -59,8 +62,8 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     gateway: '192.168.100.202',
     timestamp: new Date().toISOString(),
-    mailUser: process.env.MAIL_USER || process.env.SMTP_USER || 'noreply@falconchemicals.com',
-    mailHost: process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.falconchemicals.com',
+    mailUser: process.env.MAIL_USER || process.env.SMTP_USER || 'inquiry@falconchemicals.com',
+    mailHost: process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.office365.com',
     mailPort: process.env.MAIL_PORT || process.env.SMTP_PORT || '587',
     mailEncryption: process.env.MAIL_ENCRYPTION || 'tls',
     hasMailPass: Boolean(pass)
@@ -92,7 +95,7 @@ app.post('/api/send-email', async (req, res) => {
   }
 
   const recipientList = Array.from(recipients).join(', ');
-  const senderEmail = process.env.SMTP_USER || process.env.NOREPLY_EMAIL || 'noreply@falconchemicals.com';
+  const senderEmail = process.env.MAIL_FROM || process.env.MAIL_USER || process.env.SMTP_USER || 'inquiry@falconchemicals.com';
   const senderName = 'Falcon Chemicals LLC — Security Gateway';
 
   // Build high-clarity HTML email template matching Falcon Chemicals KYC / Security standard
