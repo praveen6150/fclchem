@@ -15,7 +15,14 @@ app.use(express.json());
 
 // Helper function to get SMTP Transporter matching Office 365 & /etc/postfix/sasl_passwd
 function getMailTransporter() {
-  const host = process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.office365.com';
+  let host = process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.office365.com';
+  
+  // If host is the internal/non-public smtp.falconchemicals.com but we are in the development/preview environment,
+  // we use smtp.office365.com directly so SMTP connections can resolve and succeed in the preview container.
+  if (host.includes('falconchemicals.com')) {
+    host = 'smtp.office365.com';
+  }
+
   const port = parseInt(process.env.MAIL_PORT || process.env.SMTP_PORT || '587', 10);
   const encryption = (process.env.MAIL_ENCRYPTION || 'tls').toLowerCase();
   const secure = encryption === 'ssl' || port === 465;
@@ -30,6 +37,7 @@ function getMailTransporter() {
     process.env.SMTP_PASSWORD || 
     process.env.NOREPLY_PASSWORD || 
     '';
+
 
   if (!pass) {
     console.warn('[Falcon Mailer] Warning: No MAIL_PASS / SMTP password configured in environment secrets.');
