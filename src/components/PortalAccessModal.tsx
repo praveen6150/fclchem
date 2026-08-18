@@ -114,7 +114,11 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   const dispatchEmailWithServerRelay = async (email: VirtualEmail) => {
     onSendVirtualEmail(email);
     try {
-      await fetch('/api/send-email', {
+      // Direct routing: In production (live server), use native PHP gateway. In dev sandbox, use Express API
+      const isProduction = window.location.hostname === 'kyc.falconchemicals.com' || window.location.port === '';
+      const endpoint = isProduction ? '/send_otp.php' : '/api/send-email';
+
+      await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
