@@ -3,7 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import fs from 'fs';
 
 dotenv.config();
@@ -163,25 +163,76 @@ app.post('/api/send-email', async (req, res) => {
     </html>
   `;
 
-  // 1. First: Try local PHP mail() shell-out to leverage the production server's Postfix/SASL relay configuration
+  // 1. First Route: Direct system sendmail binary (matches your proven Bash test script 100%)
   try {
-    const phpResult = await new Promise<string>((resolve, reject) => {
-      const tempFile = path.join(process.cwd(), `temp_mail_${Date.now()}_${Math.floor(Math.random() * 1000)}.php`);
-      
-      const base64Html = Buffer.from(htmlContent).toString('base64');
+    const sendmailResult = await new Promise<string>((resolve, reject) => {
       const base64Subject = Buffer.from(subject).toString('base64');
       
-      const phpCode = `<?php
+      const emailPayload = [
+        `From: "${senderName}" <${senderEmail}>`,
+        `To: ${recipientList}`,
+        `Reply-To: inquiry@falconchemicals.com`,
+        `Subject: =?UTF-8?B?${base64Subject}?=`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'X-Mailer: Falcon Chemicals Gateway / Sendmail CLI',
+        '', // Empty line separating headers from body
+        htmlContent
+      ].join('\r\n');
+
+      const sendmailProc = spawn('sendmail', ['-f', senderEmail, '-t']);
+
+      let stderr = '';
+      sendmailProc.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      sendmailProc.on('close', (code) => {
+        if (code === 0) {
+          resolve('SENDMAIL_SUCCESS');
+        } else {
+          reject(new Error(`Sendmail exited with code ${code}. Stderr: ${stderr}`));
+        }
+      });
+
+      sendmailProc.on('error', (err) => {
+        reject(new Error(`Failed to spawn sendmail: ${err.message}`));
+      });
+
+      sendmailProc.stdin.write(emailPayload);
+      sendmailProc.stdin.end();
+    });
+
+    console.log('[Falcon Mailer] Email dispatched successfully via local sendmail binary to:', recipientList);
+    return res.json({
+      success: true,
+      method: 'sendmail_cli',
+      deliveredTo: recipientList,
+      otpCode: otpCode
+    });
+
+  } catch (sendmailError: any) {
+    console.warn('[Falcon Mailer] Direct sendmail CLI failed. Trying PHP fallback:', sendmailError.message);
+    
+    // 2. Second Route: Try local PHP mail() shell-out to leverage production PHP setup
+    try {
+      const phpResult = await new Promise<string>((resolve, reject) => {
+        const tempFile = path.join(process.cwd(), `temp_mail_${Date.now()}_${Math.floor(Math.random() * 1000)}.php`);
+        
+        const base64Html = Buffer.from(htmlContent).toString('base64');
+        const base64Subject = Buffer.from(subject).toString('base64');
+        
+        const phpCode = `<?php
 $to = '${recipientList.replace(/'/g, "\\'")}';
 $subject = base64_decode('${base64Subject}');
 $html_base64 = '${base64Html}';
 $body = base64_decode($html_base64);
 
 $headers = "From: Falcon Chemicals Security <inquiry@falconchemicals.com>\\r\\n" .
-           "Reply-To: inquiry@falconchemicals.com\\r\\n" .
-           "MIME-Version: 1.0\\r\\n" .
-           "Content-Type: text/html; charset=UTF-8\\r\\n" .
-           "X-Mailer: PHP/" . phpversion();
+             "Reply-To: inquiry@falconchemicals.com\\r\\n" .
+             "MIME-Version: 1.0\\r\\n" .
+             "Content-Type: text/html; charset=UTF-8\\r\\n" .
+             "X-Mailer: PHP/" . phpversion();
 
 $result = mail($to, $subject, $body, $headers);
 if ($result) {
@@ -191,95 +242,95 @@ if ($result) {
 }
 ?>`;
 
-      fs.writeFile(tempFile, phpCode, (err) => {
-        if (err) {
-          return reject(new Error('PHP helper write failed: ' + err.message));
-        }
-        
-        exec(`php ${tempFile}`, (execErr, stdout, stderr) => {
-          // Always clean up temp file
-          fs.unlink(tempFile, () => {});
-          
-          if (execErr) {
-            return reject(new Error('PHP execution failed: ' + execErr.message));
+        fs.writeFile(tempFile, phpCode, (err) => {
+          if (err) {
+            return reject(new Error('PHP helper write failed: ' + err.message));
           }
           
-          const output = stdout.trim();
-          if (output.includes('PHP_MAIL_SUCCESS')) {
-            resolve('PHP_SUCCESS');
-          } else {
-            reject(new Error('PHP mail() returned failure. Output: ' + output));
-          }
+          exec(`php ${tempFile}`, (execErr, stdout, stderr) => {
+            // Always clean up temp file
+            fs.unlink(tempFile, () => {});
+            
+            if (execErr) {
+              return reject(new Error('PHP execution failed: ' + execErr.message));
+            }
+            
+            const output = stdout.trim();
+            if (output.includes('PHP_MAIL_SUCCESS')) {
+              resolve('PHP_SUCCESS');
+            } else {
+              reject(new Error('PHP mail() returned failure. Output: ' + output));
+            }
+          });
         });
       });
-    });
 
-    console.log('[Falcon Mailer] Email dispatched successfully via local PHP Postfix router to:', recipientList);
-    return res.json({
-      success: true,
-      method: 'php_postfix',
-      deliveredTo: recipientList,
-      otpCode: otpCode
-    });
+      console.log('[Falcon Mailer] Email dispatched successfully via local PHP Postfix router to:', recipientList);
+      return res.json({
+        success: true,
+        method: 'php_postfix',
+        deliveredTo: recipientList,
+        otpCode: otpCode
+      });
 
-  } catch (phpError: any) {
-    console.warn('[Falcon Mailer] PHP router not available or failed. Falling back to direct SMTP/Simulated:', phpError.message);
-    
-    // 2. Fallback: direct SMTP or simulated dispatcher
-    try {
-      const transporter = getMailTransporter();
+    } catch (phpError: any) {
+      console.warn('[Falcon Mailer] PHP router not available. Falling back to direct SMTP/Simulated:', phpError.message);
       
-      // Check if password exists in env before attempting SMTP connection
-      const pass = 
-        process.env.MAIL_PASS || 
-        process.env.NOREPLY_EMAIL_PASS || 
-        process.env.SMTP_PASS || 
-        process.env.MAIL_PASSWORD || 
-        process.env.EMAIL_PASS || 
-        process.env.SMTP_PASSWORD || 
-        process.env.NOREPLY_PASSWORD;
-
-      if (pass) {
-        const mailOptions = {
-          from: `"${senderName}" <${senderEmail}>`,
-          to: recipientList,
-          replyTo: 'inquiry@falconchemicals.com',
-          subject: subject,
-          text: bodyText || (otpCode ? `Your Falcon Chemicals 6-digit access token is: ${otpCode}` : subject),
-          html: htmlContent,
-          headers: {
-            'X-Mailer': 'Falcon Chemicals Enterprise Security Gateway / Nodemailer'
-          }
-        };
-
-        const info = await transporter.sendMail(mailOptions);
-        console.log('[Falcon Mailer] Fallback SMTP email sent successfully:', info.messageId, 'to:', recipientList);
+      // 3. Third Route: Direct SMTP or simulated dispatcher (for Sandbox / Dev previews)
+      try {
+        const transporter = getMailTransporter();
         
+        const pass = 
+          process.env.MAIL_PASS || 
+          process.env.NOREPLY_EMAIL_PASS || 
+          process.env.SMTP_PASS || 
+          process.env.MAIL_PASSWORD || 
+          process.env.EMAIL_PASS || 
+          process.env.SMTP_PASSWORD || 
+          process.env.NOREPLY_PASSWORD;
+
+        if (pass) {
+          const mailOptions = {
+            from: `"${senderName}" <${senderEmail}>`,
+            to: recipientList,
+            replyTo: 'inquiry@falconchemicals.com',
+            subject: subject,
+            text: bodyText || (otpCode ? `Your Falcon Chemicals 6-digit access token is: ${otpCode}` : subject),
+            html: htmlContent,
+            headers: {
+              'X-Mailer': 'Falcon Chemicals Enterprise Security Gateway / Nodemailer'
+            }
+          };
+
+          const info = await transporter.sendMail(mailOptions);
+          console.log('[Falcon Mailer] Fallback SMTP email sent successfully:', info.messageId, 'to:', recipientList);
+          
+          return res.json({
+            success: true,
+            method: 'smtp',
+            messageId: info.messageId,
+            deliveredTo: recipientList,
+            otpCode: otpCode
+          });
+        } else {
+          console.log('[Falcon Mailer] Fallback simulated dispatch (SMTP password not set). Ready to deliver to:', recipientList);
+          return res.json({
+            success: true,
+            method: 'simulated_ready',
+            note: 'Email processed through gateway fallback. To enable live SMTP relay, configure MAIL_PASS in secrets.',
+            deliveredTo: recipientList,
+            otpCode: otpCode
+          });
+        }
+      } catch (smtpError: any) {
+        console.error('[Falcon Mailer] All dispatch channels failed. Catch: ', smtpError);
         return res.json({
           success: true,
-          method: 'smtp',
-          messageId: info.messageId,
-          deliveredTo: recipientList,
-          otpCode: otpCode
-        });
-      } else {
-        console.log('[Falcon Mailer] Fallback simulated dispatch (SMTP password not set). Ready to deliver to:', recipientList);
-        return res.json({
-          success: true,
-          method: 'simulated_ready',
-          note: 'Email processed through gateway fallback. To enable live SMTP relay, configure MAIL_PASS in secrets.',
+          warning: 'All transmission channels returned notice: ' + (smtpError.message || 'Connection timeout'),
           deliveredTo: recipientList,
           otpCode: otpCode
         });
       }
-    } catch (smtpError: any) {
-      console.error('[Falcon Mailer] All dispatch channels failed. Catch: ', smtpError);
-      return res.json({
-        success: true,
-        warning: 'All transmission channels returned notice: ' + (smtpError.message || 'Connection timeout'),
-        deliveredTo: recipientList,
-        otpCode: otpCode
-      });
     }
   }
 });
