@@ -224,17 +224,21 @@ app.post('/api/send-email', async (req, res) => {
         
         const phpCode = `<?php
 $to = '${recipientList.replace(/'/g, "\\'")}';
+$from = '${senderEmail.replace(/'/g, "\\'")}';
 $subject = base64_decode('${base64Subject}');
 $html_base64 = '${base64Html}';
 $body = base64_decode($html_base64);
 
-$headers = "From: Falcon Chemicals Security <inquiry@falconchemicals.com>\\r\\n" .
+$headers = "From: Falcon Chemicals Security <" . $from . ">\\r\\n" .
              "Reply-To: inquiry@falconchemicals.com\\r\\n" .
              "MIME-Version: 1.0\\r\\n" .
              "Content-Type: text/html; charset=UTF-8\\r\\n" .
              "X-Mailer: PHP/" . phpversion();
 
-$result = mail($to, $subject, $body, $headers);
+// Use the 5th parameter (-f) to set the envelope sender, preventing Postfix defaulting to root@fcl1.falconchemicals.com
+$additional_params = "-f " . $from;
+
+$result = mail($to, $subject, $body, $headers, $additional_params);
 if ($result) {
     echo "PHP_MAIL_SUCCESS";
 } else {
