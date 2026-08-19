@@ -23,6 +23,7 @@ import {
   Info
 } from 'lucide-react';
 import { audioEngine } from '../services/audioEngine';
+import { DivisionSalesViewer } from './reports/DivisionSalesViewer';
 
 interface OracleReportsPortalProps {
   currentUser: UserAccount;
@@ -69,6 +70,15 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
 
   const permittedCount = ALL_ORACLE_REPORTS.filter(r => hasAccess(r.id)).length;
   const isOfficeIp = currentSimulatedIp.startsWith('192.168.100.');
+
+  if (selectedReport && selectedReport.id === 'ora_sales_div_drilldown') {
+    return (
+      <DivisionSalesViewer 
+        onBack={() => setSelectedReport(null)} 
+        serverUrl="http://192.168.100.202:8080/sales-report/"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f0f4f9] text-[#1e293b] font-sans flex flex-col selection:bg-sky-200">
