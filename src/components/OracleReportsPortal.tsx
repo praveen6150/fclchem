@@ -296,21 +296,34 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-base text-white">{selectedReport.title}</h3>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-600/40">
-                      LIVE ORACLE RDF
+                      LIVE ORACLE ENGINE
                     </span>
                   </div>
                   <p className="text-xs text-sky-200/80">
-                    Module: {selectedReport.moduleName} • Source: <code className="font-mono text-white">http://192.168.100.202:8080/reports/rwservlet?{selectedReport.oracleCode}</code>
+                    Module: <strong>{selectedReport.moduleName}</strong> • Flask Route: <code className="font-mono text-white bg-slate-800/80 px-1.5 py-0.5 rounded">{selectedReport.endpointUrl}</code> • Backend: <span className="font-mono text-sky-300">{selectedReport.oracleCode}</span>
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => setSelectedReport(null)}
-                className="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 text-sm"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedReport.endpointUrl && selectedReport.endpointUrl !== '#' && (
+                  <a
+                    href={`http://192.168.100.202:8080${selectedReport.endpointUrl}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition-all"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open on 192.168.100.202:8080
+                  </a>
+                )}
+                <button
+                  onClick={() => setSelectedReport(null)}
+                  className="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 text-sm"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Summary Statistics Bar if available */}
