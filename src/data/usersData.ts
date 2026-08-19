@@ -5,27 +5,6 @@ import { ALL_ORACLE_REPORTS } from './oracleReportsData';
 export const INITIAL_USERS: UserAccount[] = [
   {
     id: 'usr_admin_01',
-    username: 'admin',
-    fullName: 'Praveen (Chief Admin)',
-    email: 'praveen@falconchemicals.com',
-    password: 'FalconAdmin@2026',
-    role: 'admin',
-    department: 'Executive IT & Corporate Security',
-    companyOrBranch: 'Falcon Chemicals LLC HQ - Dubai',
-    isActive: true,
-    authMethod: 'password_plus_token',
-    ipPolicy: 'office_only',
-    customAllowedSubnet: '192.168.100.0/24',
-    allowedReportIds: [
-      ...FALCON_REPORTS.map(r => r.id),
-      ...ALL_ORACLE_REPORTS.map(r => r.id)
-    ],
-    createdDate: '2025-01-10',
-    lastLogin: '2026-08-16 10:14:22',
-    lastLoginIp: '192.168.100.15'
-  },
-  {
-    id: 'usr_admin_01_alias',
     username: 'praveen',
     fullName: 'Praveen (Chief Admin)',
     email: 'praveen@falconchemicals.com',
@@ -42,8 +21,8 @@ export const INITIAL_USERS: UserAccount[] = [
       ...ALL_ORACLE_REPORTS.map(r => r.id)
     ],
     createdDate: '2025-01-10',
-    lastLogin: '2026-08-16 10:14:22',
-    lastLoginIp: '192.168.100.15'
+    lastLogin: '2026-08-19 05:44:07',
+    lastLoginIp: '192.168.100.45'
   },
   {
     id: 'usr_ajay_02',
@@ -76,56 +55,6 @@ export const INITIAL_USERS: UserAccount[] = [
     createdDate: '2026-08-10',
     lastLogin: '2026-08-16 09:30:00',
     lastLoginIp: '192.168.100.45'
-  },
-  {
-    id: 'usr_sales_03',
-    username: 'tariq.mansoor',
-    fullName: 'Tariq Al-Mansoor',
-    email: 'tariq.mansoor@falconchemicals.com',
-    password: 'TariqSales$2026',
-    role: 'analyst',
-    department: 'UAE & GCC Commercial Sales',
-    companyOrBranch: 'Dubai Commercial Sales Office',
-    isActive: true,
-    authMethod: 'token_otp',
-    ipPolicy: 'office_only',
-    customAllowedSubnet: '192.168.100.0/24',
-    allowedReportIds: [
-      'ora_sales_div_drilldown',
-      'ora_sales_avg_analysis',
-      'ora_sales_cust_supp_master',
-      'ora_sales_salesman_rep',
-      'rep_sales_daily',
-      'rep_sales_customer',
-      'rep_sales_outstanding_aging'
-    ],
-    createdDate: '2025-06-01',
-    lastLogin: '2026-08-14 11:20:00',
-    lastLoginIp: '192.168.100.88'
-  },
-  {
-    id: 'usr_mgr_04',
-    username: 'evelyn.vance',
-    fullName: 'Dr. Evelyn Vance',
-    email: 'evelyn.vance@falconchemicals.com',
-    password: 'EvelynChem#2026',
-    role: 'manager',
-    department: 'R&D Chemical Formulation & Production',
-    companyOrBranch: 'DIC Advanced Chemical Plant Lab',
-    isActive: true,
-    authMethod: 'password',
-    ipPolicy: 'office_only',
-    customAllowedSubnet: '192.168.100.0/24',
-    allowedReportIds: [
-      'ora_prod_formulation_costing',
-      'ora_prod_raw_mat_division',
-      'ora_prod_history',
-      'rep_prod_reactor_batch',
-      'rep_stock_raw_materials'
-    ],
-    createdDate: '2025-03-14',
-    lastLogin: '2026-08-15 16:30:10',
-    lastLoginIp: '192.168.100.42'
   }
 ];
 

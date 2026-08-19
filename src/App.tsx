@@ -15,9 +15,9 @@ import { INITIAL_USERS, INITIAL_AUDIT_LOGS, INITIAL_EMAILS } from './data/usersD
 import { audioEngine } from './services/audioEngine';
 
 // Local storage keys for state persistence
-const STORAGE_USERS = 'falcon_chemicals_users_v2';
-const STORAGE_LOGS = 'falcon_chemicals_logs_v2';
-const STORAGE_EMAILS = 'falcon_chemicals_emails_v2';
+const STORAGE_USERS = 'falcon_chemicals_users_v3';
+const STORAGE_LOGS = 'falcon_chemicals_logs_v3';
+const STORAGE_EMAILS = 'falcon_chemicals_emails_v3';
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
@@ -27,26 +27,46 @@ export default function App() {
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('hero');
 
-  // Application Data & Auth States (with local persistence)
+  // Application Data & Auth States (with local & server persistence)
   const [users, setUsers] = useState<UserAccount[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_USERS);
       if (saved) {
         const parsed: UserAccount[] = JSON.parse(saved);
-        // Ensure admin and praveen exist in user list
-        const hasAdmin = parsed.some(u => u.username.toLowerCase() === 'admin');
-        const hasPraveen = parsed.some(u => u.username.toLowerCase() === 'praveen');
-        if (!hasAdmin || !hasPraveen) {
-          const missing = INITIAL_USERS.filter(iu => !parsed.some(p => p.id === iu.id || p.username.toLowerCase() === iu.username.toLowerCase()));
-          return [...parsed, ...missing];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Deduplicate admin if multiple admin accounts exist in storage
+          const nonAdmins = parsed.filter(u => u.role !== 'admin' && u.username.toLowerCase() !== 'admin' && u.username.toLowerCase() !== 'praveen');
+          const adminUser = parsed.find(u => u.role === 'admin' || u.username.toLowerCase() === 'praveen' || u.username.toLowerCase() === 'admin') || INITIAL_USERS[0];
+          
+          // Return clean single admin + custom created users (without reviving deleted users)
+          return [{ ...adminUser, username: 'praveen', fullName: 'Praveen (Chief Admin)', email: 'praveen@falconchemicals.com', role: 'admin' as const }, ...nonAdmins];
         }
-        return parsed;
       }
     } catch (e) {
       console.warn('Could not parse saved users, falling back to initial.', e);
     }
     return INITIAL_USERS;
   });
+
+  // Fetch persisted users from server on mount
+  useEffect(() => {
+    const fetchServerUsers = async () => {
+      try {
+        const isProduction = window.location.hostname === 'kyc.falconchemicals.com' || window.location.port === '';
+        const endpoint = isProduction ? '/users_api.php' : '/api/users';
+        const res = await fetch(endpoint);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.users) && data.users.length > 0) {
+            setUsers(data.users);
+          }
+        }
+      } catch (err) {
+        console.warn('[Falcon Users] Note: Local storage persistence active:', err);
+      }
+    };
+    fetchServerUsers();
+  }, []);
 
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     try {
@@ -80,10 +100,19 @@ export default function App() {
   // Simulated Host Network IP (Office 192.168.100.45 vs WAN 86.96.12.114)
   const [currentSimulatedIp, setCurrentSimulatedIp] = useState<string>('192.168.100.45');
 
-  // Persist changes to localStorage
+  // Persist changes to localStorage and sync to server endpoint
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+      
+      // Background sync to server users_store.json
+      const isProduction = window.location.hostname === 'kyc.falconchemicals.com' || window.location.port === '';
+      const endpoint = isProduction ? '/users_api.php' : '/api/users';
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users })
+      }).catch(() => {});
     } catch (e) {
       console.warn('Error saving users to storage', e);
     }
@@ -309,6 +338,7 @@ export default function App() {
         onSendVirtualEmail={handleSendVirtualEmail}
         onAddAuditLog={handleAddAuditLog}
         onOpenEmailInbox={() => setIsEmailModalOpen(true)}
+        onUpdateUsers={setUsers}
       />
 
       {/* Full-Screen YouTube Style Video Presentation Modal */}

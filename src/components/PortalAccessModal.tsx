@@ -32,6 +32,7 @@ interface PortalAccessModalProps {
   onSendVirtualEmail: (email: VirtualEmail) => void;
   onAddAuditLog: (log: AuditLogEntry) => void;
   onOpenEmailInbox?: () => void;
+  onUpdateUsers?: (users: UserAccount[]) => void;
 }
 
 type TabType = 'signin' | 'token_login' | 'new_user' | 'recovery';
@@ -72,7 +73,8 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
   onUpdateSimulatedIp,
   onLoginSuccess,
   onSendVirtualEmail,
-  onAddAuditLog
+  onAddAuditLog,
+  onUpdateUsers
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('signin');
   
@@ -431,8 +433,12 @@ export const PortalAccessModal: React.FC<PortalAccessModalProps> = ({
       return;
     }
 
-    // Update user password in memory
+    // Update user password in memory and persisted storage
     pendingOtpUser.password = newPasswordInput;
+    if (onUpdateUsers) {
+      const updatedList = users.map(u => u.id === pendingOtpUser.id ? { ...u, password: newPasswordInput } : u);
+      onUpdateUsers(updatedList);
+    }
     audioEngine.playSuccess();
     setSuccessMessage('Password reset successfully. You may now sign in with your new credentials.');
     setActiveTab('signin');

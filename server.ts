@@ -339,6 +339,36 @@ if ($result) {
   }
 });
 
+// User Persistence Endpoints
+const USERS_STORE_FILE = path.join(process.cwd(), 'users_store.json');
+
+app.get('/api/users', (req, res) => {
+  try {
+    if (fs.existsSync(USERS_STORE_FILE)) {
+      const data = fs.readFileSync(USERS_STORE_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      return res.json(parsed);
+    }
+  } catch (e) {
+    console.warn('[Users API] Error reading users store:', e);
+  }
+  res.json({ status: 'empty', users: [] });
+});
+
+app.post('/api/users', (req, res) => {
+  try {
+    const { users } = req.body;
+    if (Array.isArray(users)) {
+      fs.writeFileSync(USERS_STORE_FILE, JSON.stringify({ users }, null, 2), 'utf-8');
+      return res.json({ success: true, count: users.length });
+    }
+    return res.status(400).json({ success: false, error: 'Users array required' });
+  } catch (e: any) {
+    console.error('[Users API] Error saving users:', e);
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
