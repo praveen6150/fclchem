@@ -292,9 +292,9 @@ export const FALCON_CHAPTERS: PresentationChapter[] = [
   },
   {
     id: 2,
-    title: 'Automated Dubai Industrial City Production',
+    title: 'Advanced Jebel Ali Industrial Plant Production',
     subtitle: 'Precision Processing & Modern Logistics Infrastructure',
-    description: 'Our automated manufacturing plant in Dubai Industrial City utilizes stainless steel reactors, precision metering systems, and high-speed packaging lines to deliver uncompromised chemical purity.',
+    description: 'Our advanced manufacturing and research plant in Jebel Ali Industrial Area No. 3 utilizes stainless steel reactors, precision metering systems, and high-speed packaging lines to deliver uncompromised chemical purity.',
     highlights: [
       'Multi-line automated liquid and paste filling systems',
       'Strict batch testing & quality assurance protocol',
@@ -344,8 +344,9 @@ export const COMPANY_INFO = {
   name: 'Falcon Chemicals LLC',
   tagline: 'Precision Chemical Solutions for Global Industry',
   established: '1976',
-  headquarters: 'Dubai Industrial City, Dubai, United Arab Emirates',
+  headquarters: 'Jebel Ali Industrial Area No. 3, Dubai, United Arab Emirates',
   phone: '+971 4 8801444',
+  timing: 'Mon - Sat: 8:30 AM - 5:00 PM (GST)',
   email: 'inquiry@falconchemicals.com',
   websiteMain: 'www.falconchemicals.com',
   websiteRegional: 'www.falconchemicals.ae',

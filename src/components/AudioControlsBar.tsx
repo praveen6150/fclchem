@@ -93,7 +93,7 @@ export const AudioControlsBar: React.FC<Props> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
+    <header className="sticky top-0 z-40 bg-[#030712]/95 backdrop-blur-md border-b border-[#1e293b]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-3">
           
@@ -101,35 +101,35 @@ export const AudioControlsBar: React.FC<Props> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => onNavigateSection('hero')}
-              className="flex items-center gap-2.5 text-left group"
+              className="flex items-center gap-2.5 text-left group cursor-pointer"
             >
               <FalconLogo size="sm" />
               <div>
-                <span className="font-extrabold tracking-wider text-sm sm:text-base text-white group-hover:text-cyan-400 transition-colors">
+                <span className="font-black tracking-wider text-sm sm:text-base text-white group-hover:text-amber-400 transition-colors">
                   FALCON CHEMICALS
                 </span>
-                <span className="block text-[10px] text-slate-400 uppercase tracking-widest -mt-0.5">
+                <span className="block text-[10px] text-amber-400/90 font-mono uppercase tracking-widest -mt-0.5 font-bold">
                   LLC • DUBAI, UAE
                 </span>
               </div>
             </button>
 
             {/* Spectrum Visualizer */}
-            <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 gap-2">
+            <div className="hidden sm:flex items-center bg-[#0a1120] border border-[#1e293b] rounded-lg px-2.5 py-1 gap-2">
               <canvas
                 ref={canvasRef}
                 width={65}
                 height={16}
                 className="opacity-90"
               />
-              <span className="text-[10px] font-mono text-cyan-400 uppercase">
+              <span className="text-[10px] font-mono text-amber-400 uppercase font-semibold">
                 {isMuted ? 'MUTED' : isAmbientPlaying ? 'AMBIENT ON' : 'AUDIO ACTIVE'}
               </span>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-900/80 border border-slate-800 rounded-full px-3 py-1">
+          <nav className="hidden md:flex items-center gap-1 bg-[#0a1120] border border-[#1e293b] rounded-full px-3 py-1">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -137,9 +137,9 @@ export const AudioControlsBar: React.FC<Props> = ({
                   audioEngine.playClick();
                   onNavigateSection(item.id);
                 }}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                className={`px-3.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeSection === item.id
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -157,7 +157,7 @@ export const AudioControlsBar: React.FC<Props> = ({
                 audioEngine.playClick();
                 onToggleSimulatedIp();
               }}
-              className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono transition-all ${
+              className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono transition-all cursor-pointer ${
                 isOfficeSubnet
                   ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-300 hover:border-emerald-400'
                   : 'bg-amber-950/50 border-amber-500/30 text-amber-300 hover:border-amber-400'
@@ -165,16 +165,16 @@ export const AudioControlsBar: React.FC<Props> = ({
               title="Click to toggle between Office Subnet and Internet WAN"
             >
               {isOfficeSubnet ? <Building2 className="w-3.5 h-3.5 text-emerald-400" /> : <Globe2 className="w-3.5 h-3.5 text-amber-400" />}
-              <span className="text-[11px]">{currentSimulatedIp}</span>
+              <span className="text-[11px] font-bold">{currentSimulatedIp}</span>
             </button>
 
             {/* Sound Mute Button */}
             <button
               onClick={handleMuteClick}
-              className={`p-2 rounded-lg border transition-colors ${
+              className={`p-2 rounded-lg border transition-colors cursor-pointer ${
                 isMuted
                   ? 'bg-rose-950/40 text-rose-400 border-rose-800'
-                  : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                  : 'bg-[#0a1120] text-slate-300 border-[#1e293b] hover:border-amber-500/40 hover:text-white'
               }`}
               title={isMuted ? 'Unmute Corporate Audio' : 'Mute Corporate Audio'}
             >
@@ -184,14 +184,14 @@ export const AudioControlsBar: React.FC<Props> = ({
             {/* Ambient Soundscape Toggle */}
             <button
               onClick={handleAmbientClick}
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                 isAmbientPlaying
-                  ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-300 shadow-sm'
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                  ? 'bg-amber-950/60 border-amber-500/40 text-amber-300 shadow-sm'
+                  : 'bg-[#0a1120] border-[#1e293b] text-slate-400 hover:text-white hover:border-amber-500/30'
               }`}
               title="Toggle Ambient Audio Synth"
             >
-              <Radio className={`w-3.5 h-3.5 ${isAmbientPlaying ? 'animate-pulse text-cyan-400' : ''}`} />
+              <Radio className={`w-3.5 h-3.5 ${isAmbientPlaying ? 'animate-pulse text-amber-400' : ''}`} />
               <span>{isAmbientPlaying ? 'Ambient: On' : 'Ambient: Off'}</span>
             </button>
 
@@ -202,11 +202,11 @@ export const AudioControlsBar: React.FC<Props> = ({
                   audioEngine.playClick();
                   onOpenOraclePortal();
                 }}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#002b49] hover:bg-[#003b66] border border-sky-400/40 text-sky-200 hover:text-white text-xs font-bold rounded-lg shadow transition-all cursor-pointer"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#0a1120] hover:bg-slate-900 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-bold rounded-lg shadow transition-all cursor-pointer"
                 title="Access Oracle Reports (192.168.100.202:8080) - Requires 192.168.100.202 Authentication"
               >
-                <Globe2 className="w-3.5 h-3.5 text-sky-400" />
-                <span>Oracle Reports (192.168.100.202:8080)</span>
+                <Globe2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Oracle Reports (192.168.100.202)</span>
               </button>
             )}
 
@@ -216,9 +216,9 @@ export const AudioControlsBar: React.FC<Props> = ({
                 audioEngine.playClick();
                 onOpenPortal();
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white text-xs font-bold rounded-lg shadow-lg shadow-cyan-900/30 transition-all border border-cyan-400/30 cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 via-amber-500 to-yellow-500 hover:from-amber-600 hover:to-amber-500 text-slate-950 text-xs font-bold rounded-lg shadow-lg shadow-amber-500/20 transition-all border border-amber-400/40 cursor-pointer"
             >
-              <ShieldCheck className="w-4 h-4" />
+              <ShieldCheck className="w-4 h-4 text-slate-950" />
               <span>Portal & Reports</span>
             </button>
 
