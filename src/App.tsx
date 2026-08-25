@@ -242,32 +242,39 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
       
-      {/* 1. IF CURRENT USER IS LOGGED IN */}
-      {currentUser ? (
-        isAdminPanelOpen && currentUser.role === 'admin' ? (
-          <AdminAccessControlPanel
-            users={users}
-            auditLogs={auditLogs}
-            currentSimulatedIp={currentSimulatedIp}
-            onUpdateUsers={handleUpdateUsers}
-            onAddAuditLog={handleAddAuditLog}
-            onSendVirtualEmail={handleSendVirtualEmail}
-            onReturnToReports={() => setIsAdminPanelOpen(false)}
-            onOpenEmailInbox={() => setIsEmailModalOpen(true)}
-            onOpenOraclePortal={() => setIsAdminPanelOpen(false)}
-          />
-        ) : (
-          <OracleReportsPortal
-            currentUser={currentUser}
-            currentSimulatedIp={currentSimulatedIp}
-            onLogout={handleLogout}
-            onOpenAdminPanel={currentUser.role === 'admin' ? () => setIsAdminPanelOpen(true) : undefined}
-            onReturnToPresentation={handleLogout}
-            onToggleSimulatedIp={handleToggleSimulatedIp}
-          />
-        )
+      {/* 1. IF CURRENT USER IS LOGGED IN AND IN PORTAL VIEW */}
+      {currentUser && isOracleReportsPortalOpen ? (
+        <OracleReportsPortal
+          currentUser={currentUser}
+          currentSimulatedIp={currentSimulatedIp}
+          onLogout={handleLogout}
+          onOpenAdminPanel={currentUser.role === 'admin' ? () => {
+            setIsOracleReportsPortalOpen(false);
+            setIsAdminPanelOpen(true);
+          } : undefined}
+          onReturnToPresentation={() => setIsOracleReportsPortalOpen(false)}
+          onToggleSimulatedIp={handleToggleSimulatedIp}
+        />
+      ) : currentUser && isAdminPanelOpen && currentUser.role === 'admin' ? (
+        <AdminAccessControlPanel
+          users={users}
+          auditLogs={auditLogs}
+          currentSimulatedIp={currentSimulatedIp}
+          onUpdateUsers={handleUpdateUsers}
+          onAddAuditLog={handleAddAuditLog}
+          onSendVirtualEmail={handleSendVirtualEmail}
+          onReturnToReports={() => {
+            setIsAdminPanelOpen(false);
+            setIsOracleReportsPortalOpen(true);
+          }}
+          onOpenEmailInbox={() => setIsEmailModalOpen(true)}
+          onOpenOraclePortal={() => {
+            setIsAdminPanelOpen(false);
+            setIsOracleReportsPortalOpen(true);
+          }}
+        />
       ) : (
-        /* 2. PUBLIC CORPORATE PRESENTATION WEBSITE */
+        /* 2. CORPORATE PRESENTATION WEBSITE (ACCESSIBLE TO GUESTS AND LOGGED-IN USERS) */
         <>
           {/* Sticky Audio & Controls Header */}
           <AudioControlsBar
