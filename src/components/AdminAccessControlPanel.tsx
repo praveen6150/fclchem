@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { UserAccount, AuditLogEntry, VirtualEmail, IPAccessPolicy, AuthMethod, RoleType } from '../types';
-import { FALCON_REPORTS } from '../data/reportsData';
 import { ORACLE_REPORT_MODULES, ALL_ORACLE_REPORTS, DEFAULT_ALL_ORACLE_REPORT_IDS } from '../data/oracleReportsData';
 import { FalconLogo } from './FalconLogo';
 import { 
@@ -986,57 +985,6 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Operations Hub Core Reports */}
-                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2 mt-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                    <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                      Core Operations Hub Reports
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const coreIds = FALCON_REPORTS.map(r => r.id);
-                        const allCore = coreIds.every(id => formAllowedReports.includes(id));
-                        if (allCore) {
-                          setFormAllowedReports(formAllowedReports.filter(id => !coreIds.includes(id)));
-                        } else {
-                          setFormAllowedReports(Array.from(new Set([...formAllowedReports, ...coreIds])));
-                        }
-                      }}
-                      className="text-[11px] text-cyan-400 hover:underline font-medium"
-                    >
-                      Toggle Core Hub Reports
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    {FALCON_REPORTS.map((rep) => {
-                      const isChecked = formAllowedReports.includes(rep.id);
-                      return (
-                        <label
-                          key={rep.id}
-                          className={`p-2 rounded-lg border cursor-pointer flex items-start gap-2.5 transition-all text-xs ${
-                            isChecked
-                              ? 'bg-cyan-950/40 border-cyan-500/40 text-white'
-                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleReport(rep.id)}
-                            className="mt-0.5 rounded bg-slate-950 border-slate-700 text-cyan-500 focus:ring-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className="font-semibold text-xs text-slate-200 block truncate">{rep.title}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">{rep.code}</span>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
                 </div>
 
               </div>

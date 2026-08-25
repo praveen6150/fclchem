@@ -1,5 +1,4 @@
 import { UserAccount, AuditLogEntry, VirtualEmail } from '../types';
-import { FALCON_REPORTS } from './reportsData';
 import { ALL_ORACLE_REPORTS } from './oracleReportsData';
 
 export const INITIAL_USERS: UserAccount[] = [
@@ -16,10 +15,7 @@ export const INITIAL_USERS: UserAccount[] = [
     authMethod: 'password_plus_token',
     ipPolicy: 'office_only',
     customAllowedSubnet: '192.168.100.0/24',
-    allowedReportIds: [
-      ...FALCON_REPORTS.map(r => r.id),
-      ...ALL_ORACLE_REPORTS.map(r => r.id)
-    ],
+    allowedReportIds: ALL_ORACLE_REPORTS.map(r => r.id),
     createdDate: '2025-01-10',
     lastLogin: '2026-08-19 05:44:07',
     lastLoginIp: '192.168.100.45'
@@ -47,10 +43,7 @@ export const INITIAL_USERS: UserAccount[] = [
       'ora_sales_pending_orders',
       'ora_sales_analytics_multidim',
       'ora_dispatch_daily_report',
-      'rep_sales_daily',
-      'rep_sales_customer',
-      'rep_sales_outstanding_aging',
-      'rep_stock_balance'
+      'ora_prod_formulation_costing'
     ],
     createdDate: '2026-08-10',
     lastLogin: '2026-08-16 09:30:00',

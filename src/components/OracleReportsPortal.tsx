@@ -18,12 +18,11 @@ import {
   FileSpreadsheet, 
   Key, 
   Sliders, 
-  LogOut,
-  RefreshCw,
+  LogOut, 
+  RefreshCw, 
   Info
 } from 'lucide-react';
 import { audioEngine } from '../services/audioEngine';
-import { DivisionSalesViewer } from './reports/DivisionSalesViewer';
 
 interface OracleReportsPortalProps {
   currentUser: UserAccount;
@@ -42,7 +41,6 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
   onReturnToPresentation,
   onToggleSimulatedIp
 }) => {
-  const [selectedReport, setSelectedReport] = useState<OracleReportItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [deniedReportAttempt, setDeniedReportAttempt] = useState<OracleReportItem | null>(null);
 
@@ -61,7 +59,8 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
 
     audioEngine.playClick();
     if (report.status === 'LIVE') {
-      setSelectedReport(report);
+      const targetUrl = `http://192.168.100.202:8080${report.endpointUrl}`;
+      window.open(targetUrl, '_blank');
     } else {
       audioEngine.playNotification();
       alert(`[Oracle Reports 192.168.100.202:8080]\n\n"${report.title}" is currently staged for deployment (SOON).\nLive RDF mapping: ${report.oracleCode}`);
@@ -70,73 +69,6 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
 
   const permittedCount = ALL_ORACLE_REPORTS.filter(r => hasAccess(r.id)).length;
   const isOfficeIp = currentSimulatedIp.startsWith('192.168.100.');
-
-  if (selectedReport && selectedReport.id === 'ora_sales_div_drilldown') {
-    return (
-      <DivisionSalesViewer 
-        onBack={() => setSelectedReport(null)} 
-        serverUrl="http://192.168.100.202:8080/sales-report/"
-      />
-    );
-  }
-
-  if (selectedReport && selectedReport.status === 'LIVE') {
-    const liveUrl = `http://192.168.100.202:8080${selectedReport.endpointUrl}`;
-    return (
-      <div className="min-h-screen bg-[#f8fafc] text-[#1e293b] font-sans p-4 sm:p-6 flex flex-col">
-        {/* Top Breadcrumb Navigation */}
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <button
-            onClick={() => {
-              audioEngine.playClick();
-              setSelectedReport(null);
-            }}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2563eb] hover:underline"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Return to Portal Overview
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">
-              Flask Route: <code className="font-mono text-slate-800 bg-slate-200 px-1.5 py-0.5 rounded">{selectedReport.endpointUrl}</code>
-            </span>
-            <a
-              href={liveUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition-all"
-            >
-              <ExternalLink className="w-3 h-3" /> Open in New Window
-            </a>
-          </div>
-        </div>
-
-        {/* Live Frame Container */}
-        <div className="flex-1 bg-white border border-slate-300 rounded-xl overflow-hidden shadow-sm flex flex-col min-h-[680px]">
-          <div className="bg-[#002b49] text-white px-4 py-2.5 text-xs flex justify-between items-center border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-sky-300" />
-              <strong className="text-white text-sm">{selectedReport.title}</strong>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-600/40">
-                192.168.100.202:8080
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-[11px] text-sky-200">
-              <span>Backend: <code className="font-mono text-white">{selectedReport.oracleCode}</code></span>
-              <span className="text-emerald-400 font-semibold">• RBAC Verified</span>
-            </div>
-          </div>
-
-          <iframe 
-            src={liveUrl} 
-            title={selectedReport.title} 
-            className="w-full flex-1 border-0" 
-            style={{ minHeight: '700px' }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#f0f4f9] text-[#1e293b] font-sans flex flex-col selection:bg-sky-200">

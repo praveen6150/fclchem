@@ -5,7 +5,6 @@ import { AboutCompanySection } from './components/AboutCompanySection';
 import { InquirySection } from './components/InquirySection';
 import { PresentationModeModal } from './components/PresentationModeModal';
 import { PortalAccessModal } from './components/PortalAccessModal';
-import { ReportsDashboard } from './components/ReportsDashboard';
 import { OracleReportsPortal } from './components/OracleReportsPortal';
 import { AdminAccessControlPanel } from './components/AdminAccessControlPanel';
 import { VirtualEmailModal } from './components/VirtualEmailModal';
@@ -243,21 +242,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
       
-      {/* 1. IF CURRENT USER IS IN ORACLE REPORTS PORTAL (192.168.100.202:8080) */}
-      {currentUser && isOracleReportsPortalOpen ? (
-        <OracleReportsPortal
-          currentUser={currentUser}
-          currentSimulatedIp={currentSimulatedIp}
-          onLogout={handleLogout}
-          onOpenAdminPanel={currentUser.role === 'admin' ? () => {
-            setIsOracleReportsPortalOpen(false);
-            setIsAdminPanelOpen(true);
-          } : undefined}
-          onReturnToPresentation={() => setIsOracleReportsPortalOpen(false)}
-          onToggleSimulatedIp={handleToggleSimulatedIp}
-        />
-      ) : currentUser ? (
-        /* 2. IF CURRENT USER IS IN ADMIN RBAC CONTROL PANEL OR OPERATIONS HUB */
+      {/* 1. IF CURRENT USER IS LOGGED IN */}
+      {currentUser ? (
         isAdminPanelOpen && currentUser.role === 'admin' ? (
           <AdminAccessControlPanel
             users={users}
@@ -268,23 +254,20 @@ export default function App() {
             onSendVirtualEmail={handleSendVirtualEmail}
             onReturnToReports={() => setIsAdminPanelOpen(false)}
             onOpenEmailInbox={() => setIsEmailModalOpen(true)}
-            onOpenOraclePortal={() => {
-              setIsAdminPanelOpen(false);
-              setIsOracleReportsPortalOpen(true);
-            }}
+            onOpenOraclePortal={() => setIsAdminPanelOpen(false)}
           />
         ) : (
-          <ReportsDashboard
+          <OracleReportsPortal
             currentUser={currentUser}
             currentSimulatedIp={currentSimulatedIp}
-            onOpenAdminPanel={currentUser.role === 'admin' ? () => setIsAdminPanelOpen(true) : undefined}
             onLogout={handleLogout}
-            onOpenEmailInbox={() => setIsEmailModalOpen(true)}
-            onOpenOraclePortal={() => setIsOracleReportsPortalOpen(true)}
+            onOpenAdminPanel={currentUser.role === 'admin' ? () => setIsAdminPanelOpen(true) : undefined}
+            onReturnToPresentation={handleLogout}
+            onToggleSimulatedIp={handleToggleSimulatedIp}
           />
         )
       ) : (
-        /* 3. PUBLIC CORPORATE PRESENTATION WEBSITE */
+        /* 2. PUBLIC CORPORATE PRESENTATION WEBSITE */
         <>
           {/* Sticky Audio & Controls Header */}
           <AudioControlsBar
