@@ -80,6 +80,64 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
     );
   }
 
+  if (selectedReport && selectedReport.status === 'LIVE') {
+    const liveUrl = `http://192.168.100.202:8080${selectedReport.endpointUrl}`;
+    return (
+      <div className="min-h-screen bg-[#f8fafc] text-[#1e293b] font-sans p-4 sm:p-6 flex flex-col">
+        {/* Top Breadcrumb Navigation */}
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <button
+            onClick={() => {
+              audioEngine.playClick();
+              setSelectedReport(null);
+            }}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2563eb] hover:underline"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Return to Portal Overview
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-medium">
+              Flask Route: <code className="font-mono text-slate-800 bg-slate-200 px-1.5 py-0.5 rounded">{selectedReport.endpointUrl}</code>
+            </span>
+            <a
+              href={liveUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition-all"
+            >
+              <ExternalLink className="w-3 h-3" /> Open in New Window
+            </a>
+          </div>
+        </div>
+
+        {/* Live Frame Container */}
+        <div className="flex-1 bg-white border border-slate-300 rounded-xl overflow-hidden shadow-sm flex flex-col min-h-[680px]">
+          <div className="bg-[#002b49] text-white px-4 py-2.5 text-xs flex justify-between items-center border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-sky-300" />
+              <strong className="text-white text-sm">{selectedReport.title}</strong>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-600/40">
+                192.168.100.202:8080
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-sky-200">
+              <span>Backend: <code className="font-mono text-white">{selectedReport.oracleCode}</code></span>
+              <span className="text-emerald-400 font-semibold">• RBAC Verified</span>
+            </div>
+          </div>
+
+          <iframe 
+            src={liveUrl} 
+            title={selectedReport.title} 
+            className="w-full flex-1 border-0" 
+            style={{ minHeight: '700px' }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f0f4f9] text-[#1e293b] font-sans flex flex-col selection:bg-sky-200">
       
@@ -291,159 +349,7 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
 
       </main>
 
-      {/* 4. REPORT VIEWER MODAL (WHEN A LIVE PERMITTED REPORT IS CLICKED) */}
-      {selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]">
-            
-            {/* Modal Header */}
-            <div className="bg-[#002b49] text-white p-4 px-6 flex items-center justify-between border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300">
-                  <Database className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base text-white">{selectedReport.title}</h3>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-600/40">
-                      LIVE ORACLE ENGINE
-                    </span>
-                  </div>
-                  <p className="text-xs text-sky-200/80">
-                    Module: <strong>{selectedReport.moduleName}</strong> • Flask Route: <code className="font-mono text-white bg-slate-800/80 px-1.5 py-0.5 rounded">{selectedReport.endpointUrl}</code> • Backend: <span className="font-mono text-sky-300">{selectedReport.oracleCode}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {selectedReport.endpointUrl && selectedReport.endpointUrl !== '#' && (
-                  <a
-                    href={`http://192.168.100.202:8080${selectedReport.endpointUrl}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition-all"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Open on 192.168.100.202:8080
-                  </a>
-                )}
-                <button
-                  onClick={() => setSelectedReport(null)}
-                  className="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Summary Statistics Bar if available */}
-            {selectedReport.summaryStats && (
-              <div className="bg-[#f8fafc] border-b border-slate-200 p-4 px-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {selectedReport.summaryStats.map((stat, i) => (
-                  <div key={i} className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
-                    <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">{stat.label}</div>
-                    <div className="text-base font-extrabold text-slate-900 mt-0.5">{stat.value}</div>
-                    {stat.sublabel && <div className="text-[10px] text-emerald-600 font-semibold">{stat.sublabel}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Modal Body / Interactive Table */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs text-slate-600">
-                  {selectedReport.description}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => {
-                      audioEngine.playSuccess();
-                      window.print();
-                    }}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-slate-300 transition-all"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    Print RDF Report
-                  </button>
-                  <button 
-                    onClick={() => {
-                      audioEngine.playSuccess();
-                      alert(`Exporting "${selectedReport.title}" data to CSV format.`);
-                    }}
-                    className="px-3 py-1.5 bg-[#0284c7] hover:bg-[#0369a1] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow transition-all"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Export Excel / CSV
-                  </button>
-                </div>
-              </div>
-
-              {/* Data Table */}
-              {selectedReport.columns && selectedReport.sampleData && (
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-[#f1f5f9] border-b border-slate-200 text-slate-700 font-bold">
-                        {selectedReport.columns.map((col) => (
-                          <th 
-                            key={col.key} 
-                            className={`p-3 px-4 ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}`}
-                          >
-                            {col.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {selectedReport.sampleData.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                          {selectedReport.columns!.map((col) => {
-                            const val = row[col.key];
-                            return (
-                              <td 
-                                key={col.key} 
-                                className={`p-3 px-4 text-slate-800 ${col.align === 'right' ? 'text-right font-mono' : col.align === 'center' ? 'text-center' : 'text-left'}`}
-                              >
-                                {col.type === 'badge' ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    {val}
-                                  </span>
-                                ) : col.type === 'currency' ? (
-                                  <span className="font-semibold text-slate-900">AED {val}</span>
-                                ) : (
-                                  val
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 px-6 bg-[#f8fafc] border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                Verified live query from Oracle Database 192.168.100.202
-              </span>
-              <button
-                onClick={() => setSelectedReport(null)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold"
-              >
-                Close Report
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* 5. ACCESS DENIED / RBAC VIOLATION MODAL */}
+      {/* 4. ACCESS DENIED / RBAC VIOLATION MODAL */}
       {deniedReportAttempt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white border border-rose-200 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 text-center">
