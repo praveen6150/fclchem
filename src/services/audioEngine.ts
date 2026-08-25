@@ -1,4 +1,7 @@
 // Web Audio API Sound Synthesizer Engine for Corporate Ambient Experience
+// Sophisticated multi-harmonic corporate soundscape engine with acoustic warmth, shimmer, chord progressions, and modern tech UX sounds
+
+export type AmbientSoundStyle = 'corporate-shimmer' | 'deep-focus' | 'minimal-pulse' | 'breeze-chill';
 
 class CorporateAudioEngine {
   private ctx: AudioContext | null = null;
@@ -7,15 +10,30 @@ class CorporateAudioEngine {
   private fxGain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
 
-  // Ambient synth nodes
+  // Ambient synth state & nodes
   private isAmbientPlaying = false;
+  private currentAmbientStyle: AmbientSoundStyle = 'corporate-shimmer';
   private ambientOscillators: OscillatorNode[] = [];
+  private ambientGainNodes: GainNode[] = [];
   private ambientFilter: BiquadFilterNode | null = null;
+  private ambientFilter2: BiquadFilterNode | null = null;
   private ambientLfo: OscillatorNode | null = null;
+  private ambientLfoGain: GainNode | null = null;
+  private progressionTimer: ReturnType<typeof setInterval> | null = null;
+  private currentChordIndex = 0;
+
+  // Soundscape Chords (Frequencies in Hz for warm cinematic progression)
+  // Progression: I (D maj9) -> vi (B min11) -> IV (G maj9) -> V (A sus4/9)
+  private readonly chordProgressions: number[][] = [
+    [146.83, 220.00, 293.66, 369.99, 554.37, 659.25], // Dmaj9 (D3, A3, D4, F#4, C#5, E5)
+    [123.47, 185.00, 246.94, 369.99, 440.00, 587.33], // Bm11  (B2, F#3, B3, F#4, A4, D5)
+    [196.00, 246.94, 293.66, 369.99, 440.00, 587.33], // Gmaj9 (G3, B3, D4, F#4, A4, D5)
+    [220.00, 277.18, 329.63, 440.00, 554.37, 659.25], // A9    (A3, C#4, E4, A4, C#5, E5)
+  ];
 
   private isMuted = false;
-  private fxVolumeVal = 0.5;
-  private ambientVolumeVal = 0.25;
+  private fxVolumeVal = 0.45;
+  private ambientVolumeVal = 0.28;
 
   private initContext() {
     if (!this.ctx) {
@@ -27,7 +45,8 @@ class CorporateAudioEngine {
       this.fxGain = this.ctx.createGain();
       this.analyser = this.ctx.createAnalyser();
 
-      this.analyser.fftSize = 64;
+      this.analyser.fftSize = 128;
+      this.analyser.smoothingTimeConstant = 0.85;
 
       this.fxGain.connect(this.masterGain);
       this.ambientGain.connect(this.masterGain);
@@ -44,12 +63,16 @@ class CorporateAudioEngine {
 
   public ensureContext(): boolean {
     this.initContext();
-    return !!this.ctx;
+    return !this.ctx ? false : true;
   }
 
   public setMute(muted: boolean) {
     this.isMuted = muted;
     this.updateVolumes();
+  }
+
+  public getIsMuted(): boolean {
+    return this.isMuted;
   }
 
   public setFxVolume(vol: number) {
@@ -67,18 +90,23 @@ class CorporateAudioEngine {
     const now = this.ctx?.currentTime || 0;
     
     if (this.isMuted) {
+      this.masterGain.gain.cancelScheduledValues(now);
       this.masterGain.gain.setValueAtTime(0, now);
     } else {
+      this.masterGain.gain.cancelScheduledValues(now);
       this.masterGain.gain.setValueAtTime(1, now);
     }
 
+    this.fxGain.gain.cancelScheduledValues(now);
     this.fxGain.gain.setValueAtTime(this.fxVolumeVal, now);
+    
+    this.ambientGain.gain.cancelScheduledValues(now);
     this.ambientGain.gain.setValueAtTime(this.ambientVolumeVal, now);
   }
 
-  // --- Sound Effects ---
+  // --- Tactile & Modern Interactive UI Sound Effects ---
 
-  // Sleek click pop (synced to every button click)
+  // Sleek organic UI click pop with subtle frequency sweep
   public playClickSound() {
     if (this.isMuted) return;
     this.ensureContext();
@@ -89,18 +117,18 @@ class CorporateAudioEngine {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    // Frequency sweep from 850Hz down to 220Hz for a crisp tactile tick
-    osc.frequency.setValueAtTime(850, now);
+    // Smooth pitch sweep for a rounded modern click feel
+    osc.frequency.setValueAtTime(720, now);
     osc.frequency.exponentialRampToValueAtTime(180, now + 0.04);
 
-    gain.gain.setValueAtTime(0.35, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.042);
 
     osc.connect(gain);
     gain.connect(this.fxGain);
 
     osc.start(now);
-    osc.stop(now + 0.05);
+    osc.stop(now + 0.045);
   }
 
   // Subtle warm hover chime
@@ -114,20 +142,20 @@ class CorporateAudioEngine {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(1200, now);
-    osc.frequency.exponentialRampToValueAtTime(1450, now + 0.03);
+    osc.frequency.setValueAtTime(1100, now);
+    osc.frequency.exponentialRampToValueAtTime(1380, now + 0.035);
 
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
 
     osc.connect(gain);
     gain.connect(this.fxGain);
 
     osc.start(now);
-    osc.stop(now + 0.065);
+    osc.stop(now + 0.06);
   }
 
-  // Slide / Tab transition swoosh
+  // Slide / Section transition swoosh
   public playSlideChangeSound() {
     if (this.isMuted) return;
     this.ensureContext();
@@ -135,56 +163,55 @@ class CorporateAudioEngine {
 
     const now = this.ctx.currentTime;
 
-    // Dual pitch harmonic sweep
-    [400, 600, 900].forEach((freq, idx) => {
+    // Dual pitch harmonic sweep with subtle stereo shimmer
+    [380, 570, 850].forEach((freq, idx) => {
       if (!this.ctx || !this.fxGain) return;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
 
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, now + idx * 0.02);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.08 + idx * 0.02);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.35, now + 0.09 + idx * 0.02);
 
-      gain.gain.setValueAtTime(0.12 / (idx + 1), now + idx * 0.02);
+      gain.gain.setValueAtTime(0.09 / (idx + 1), now + idx * 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12 + idx * 0.02);
 
       osc.connect(gain);
       gain.connect(this.fxGain);
 
       osc.start(now + idx * 0.02);
-      osc.stop(now + 0.14 + idx * 0.02);
+      osc.stop(now + 0.13 + idx * 0.02);
     });
   }
 
-  // Presentation Chapter Cue Bell
+  // Presentation Chapter Cue Bell with warm crystal reverb decay
   public playChapterCue() {
     if (this.isMuted) return;
     this.ensureContext();
     if (!this.ctx || !this.fxGain) return;
 
     const now = this.ctx.currentTime;
-    // Resonant metallic bell tone
-    const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    freqs.forEach((freq, i) => {
+    const bellPitches = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
+    bellPitches.forEach((freq, i) => {
       if (!this.ctx || !this.fxGain) return;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + i * 0.04);
+      osc.frequency.setValueAtTime(freq, now + i * 0.035);
 
-      gain.gain.setValueAtTime(0.2 / (i + 1), now + i * 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8 + i * 0.04);
+      gain.gain.setValueAtTime(0.18 / (i + 1), now + i * 0.035);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1 + i * 0.035);
 
       osc.connect(gain);
       gain.connect(this.fxGain);
 
-      osc.start(now + i * 0.04);
-      osc.stop(now + 0.85 + i * 0.04);
+      osc.start(now + i * 0.035);
+      osc.stop(now + 1.15 + i * 0.035);
     });
   }
 
-  // Success arpeggio for form submission
+  // Success chime arpeggio
   public playSuccessSound() {
     if (this.isMuted) return;
     this.ensureContext();
@@ -198,30 +225,17 @@ class CorporateAudioEngine {
       const gain = this.ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+      osc.frequency.setValueAtTime(freq, now + idx * 0.07);
 
-      gain.gain.setValueAtTime(0.22, now + idx * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4 + idx * 0.08);
+      gain.gain.setValueAtTime(0.2, now + idx * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45 + idx * 0.07);
 
       osc.connect(gain);
       gain.connect(this.fxGain);
 
-      osc.start(now + idx * 0.08);
-      osc.stop(now + 0.45 + idx * 0.08);
+      osc.start(now + idx * 0.07);
+      osc.stop(now + 0.5 + idx * 0.07);
     });
-  }
-
-  // Aliases & Additional Security Synthesizer Feedback
-  public playClick() {
-    this.playClickSound();
-  }
-
-  public playHover() {
-    this.playHoverSound();
-  }
-
-  public playSuccess() {
-    this.playSuccessSound();
   }
 
   // Security Error / Access Denied low buzzer
@@ -274,82 +288,162 @@ class CorporateAudioEngine {
     });
   }
 
-  // --- Corporate Ambient Pad Soundtrack ---
+  // Aliases for clean invocation across components
+  public playClick() {
+    this.playClickSound();
+  }
 
-  public startAmbientPad() {
+  public playHover() {
+    this.playHoverSound();
+  }
+
+  public playSuccess() {
+    this.playSuccessSound();
+  }
+
+  // --- Dynamic Multi-Layer Corporate Ambient Soundscape ---
+  // Features: Organic chord progression, resonant low-pass filter breathing, and shimmering harmonics
+
+  public startAmbientPad(style: AmbientSoundStyle = 'corporate-shimmer') {
     this.ensureContext();
-    if (!this.ctx || !this.ambientGain || this.isAmbientPlaying) return;
+    if (!this.ctx || !this.ambientGain) return;
+
+    if (this.isAmbientPlaying) {
+      this.stopAmbientPad();
+    }
 
     this.isAmbientPlaying = true;
+    this.currentAmbientStyle = style;
     const now = this.ctx.currentTime;
 
-    // Filter for warm soft tone
+    // 1. Dual Filter Stage (Warm Resonant Lowpass + Sweet High-shelf)
     this.ambientFilter = this.ctx.createBiquadFilter();
     this.ambientFilter.type = 'lowpass';
-    this.ambientFilter.frequency.setValueAtTime(450, now);
+    this.ambientFilter.frequency.setValueAtTime(650, now);
+    this.ambientFilter.Q.setValueAtTime(1.8, now);
 
-    // Filter modulation LFO
+    this.ambientFilter2 = this.ctx.createBiquadFilter();
+    this.ambientFilter2.type = 'peaking';
+    this.ambientFilter2.frequency.setValueAtTime(2200, now);
+    this.ambientFilter2.gain.setValueAtTime(2.5, now);
+    this.ambientFilter2.Q.setValueAtTime(0.8, now);
+
+    // 2. Slow breathing LFO for subtle filter sweep
     this.ambientLfo = this.ctx.createOscillator();
-    this.ambientLfo.frequency.setValueAtTime(0.12, now); // Slow 0.12 Hz breathing modulation
-    const lfoGain = this.ctx.createGain();
-    lfoGain.gain.setValueAtTime(180, now);
+    this.ambientLfo.frequency.setValueAtTime(0.08, now); // ~12 second organic breathing cycle
+    this.ambientLfoGain = this.ctx.createGain();
+    this.ambientLfoGain.gain.setValueAtTime(280, now);
 
-    this.ambientLfo.connect(lfoGain);
-    lfoGain.connect(this.ambientFilter.frequency);
+    this.ambientLfo.connect(this.ambientLfoGain);
+    this.ambientLfoGain.connect(this.ambientFilter.frequency);
     this.ambientLfo.start(now);
 
-    // Warm chord harmonics (D major 9 soft pad: D3, A3, F#4, C#5, E5)
-    const padChord = [146.83, 220.00, 369.99, 554.37, 659.25];
-    this.ambientOscillators = [];
+    // 3. Connect filter chain to ambient master
+    this.ambientFilter.connect(this.ambientFilter2);
+    this.ambientFilter2.connect(this.ambientGain);
 
-    padChord.forEach((freq, idx) => {
+    // 4. Start first chord
+    this.currentChordIndex = 0;
+    this.buildCurrentChord(now);
+
+    // 5. Automatic slow cinematic chord progression transition (every 14 seconds)
+    this.progressionTimer = setInterval(() => {
+      if (!this.isAmbientPlaying || !this.ctx) return;
+      this.currentChordIndex = (this.currentChordIndex + 1) % this.chordProgressions.length;
+      this.transitionToNextChord(this.ctx.currentTime);
+    }, 14000);
+  }
+
+  private buildCurrentChord(now: number) {
+    if (!this.ctx || !this.ambientFilter) return;
+
+    const chord = this.chordProgressions[this.currentChordIndex];
+    this.ambientOscillators = [];
+    this.ambientGainNodes = [];
+
+    chord.forEach((freq, idx) => {
       if (!this.ctx || !this.ambientFilter) return;
 
       const osc = this.ctx.createOscillator();
       const oscGain = this.ctx.createGain();
 
+      // Alternating waveforms for organic texture
       osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
       osc.frequency.setValueAtTime(freq, now);
 
-      // Slight detune for rich corporate analog shimmer
-      osc.detune.setValueAtTime((idx - 2) * 4, now);
+      // Micro-detuning for lush acoustic chorus sheen
+      const detuneCents = (idx - (chord.length / 2)) * 3.5;
+      osc.detune.setValueAtTime(detuneCents, now);
 
       oscGain.gain.setValueAtTime(0, now);
-      oscGain.gain.linearRampToValueAtTime(0.15 / padChord.length, now + 2.0); // 2 second soft fade in
+      // Soft gentle fade in over 3 seconds
+      oscGain.gain.linearRampToValueAtTime(0.18 / Math.sqrt(chord.length), now + 3.0);
 
       osc.connect(oscGain);
       oscGain.connect(this.ambientFilter);
 
       osc.start(now);
       this.ambientOscillators.push(osc);
+      this.ambientGainNodes.push(oscGain);
     });
+  }
 
-    this.ambientFilter.connect(this.ambientGain);
+  private transitionToNextChord(now: number) {
+    if (!this.ctx) return;
+    const targetChord = this.chordProgressions[this.currentChordIndex];
+
+    // Smoothly cross-glide the frequencies of running oscillators
+    this.ambientOscillators.forEach((osc, idx) => {
+      if (idx < targetChord.length) {
+        const targetFreq = targetChord[idx];
+        osc.frequency.cancelScheduledValues(now);
+        // Exponential glide over 4.5 seconds
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, targetFreq), now + 4.5);
+      }
+    });
   }
 
   public stopAmbientPad() {
+    if (this.progressionTimer) {
+      clearInterval(this.progressionTimer);
+      this.progressionTimer = null;
+    }
+
     if (!this.isAmbientPlaying || !this.ctx) return;
     const now = this.ctx.currentTime;
 
+    // Fade out oscillators gently
+    this.ambientGainNodes.forEach((gain) => {
+      try {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.linearRampToValueAtTime(0, now + 1.2);
+      } catch {
+        // ignore
+      }
+    });
+
     this.ambientOscillators.forEach((osc) => {
       try {
-        osc.stop(now + 0.5);
+        osc.stop(now + 1.3);
       } catch {
-        // ignore if already stopped
+        // ignore
       }
     });
 
     if (this.ambientLfo) {
       try {
-        this.ambientLfo.stop(now + 0.5);
+        this.ambientLfo.stop(now + 1.3);
       } catch {
         // ignore
       }
     }
 
     this.ambientOscillators = [];
+    this.ambientGainNodes = [];
     this.ambientLfo = null;
+    this.ambientLfoGain = null;
     this.ambientFilter = null;
+    this.ambientFilter2 = null;
     this.isAmbientPlaying = false;
   }
 
@@ -358,7 +452,7 @@ class CorporateAudioEngine {
   }
 
   public getAnalyserData(): Uint8Array {
-    if (!this.analyser) return new Uint8Array(32);
+    if (!this.analyser) return new Uint8Array(64);
     const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
     this.analyser.getByteFrequencyData(dataArray);
     return dataArray;
@@ -366,3 +460,4 @@ class CorporateAudioEngine {
 }
 
 export const audioEngine = new CorporateAudioEngine();
+

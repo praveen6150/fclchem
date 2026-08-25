@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserAccount, OracleReportItem, OracleModuleId, ReportColumn } from '../types';
 import { ORACLE_REPORT_MODULES, ALL_ORACLE_REPORTS } from '../data/oracleReportsData';
 import { FalconLogo } from './FalconLogo';
@@ -20,7 +20,10 @@ import {
   Sliders, 
   LogOut, 
   RefreshCw, 
-  Info
+  Info,
+  Volume2,
+  VolumeX,
+  Radio
 } from 'lucide-react';
 import { audioEngine } from '../services/audioEngine';
 
@@ -45,6 +48,28 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [deniedReportAttempt, setDeniedReportAttempt] = useState<OracleReportItem | null>(null);
   const [iframeKey, setIframeKey] = useState<number>(0);
+  const [isAmbientOn, setIsAmbientOn] = useState<boolean>(() => audioEngine.getIsAmbientPlaying());
+  const [isAudioMuted, setIsAudioMuted] = useState<boolean>(() => audioEngine.getIsMuted());
+
+  // Toggle ambient background sound
+  const handleToggleAmbient = () => {
+    audioEngine.playClick();
+    if (isAmbientOn) {
+      audioEngine.stopAmbientPad();
+      setIsAmbientOn(false);
+    } else {
+      audioEngine.startAmbientPad('corporate-shimmer');
+      setIsAmbientOn(true);
+    }
+  };
+
+  // Toggle mute
+  const handleToggleMute = () => {
+    audioEngine.playClick();
+    const nextMute = !isAudioMuted;
+    audioEngine.setMute(nextMute);
+    setIsAudioMuted(nextMute);
+  };
 
   // Check if current user has RBAC access to a specific report
   const hasAccess = (reportId: string) => {
@@ -117,6 +142,33 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
               {currentUser.role}
             </span>
           </div>
+
+          {/* Ambient Soundtrack Toggle */}
+          <button
+            onClick={handleToggleAmbient}
+            className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 border transition-all text-xs cursor-pointer ${
+              isAmbientOn 
+                ? 'bg-amber-900/60 border-amber-500/50 text-amber-300 shadow-sm' 
+                : 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title="Toggle Ambient Corporate Background Soundtrack"
+          >
+            <Radio className={`w-3.5 h-3.5 ${isAmbientOn ? 'animate-pulse text-amber-400' : ''}`} />
+            <span className="hidden sm:inline">{isAmbientOn ? 'Sound: On' : 'Sound: Off'}</span>
+          </button>
+
+          {/* Mute toggle */}
+          <button
+            onClick={handleToggleMute}
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+              isAudioMuted
+                ? 'bg-rose-950/70 border-rose-800 text-rose-400'
+                : 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title={isAudioMuted ? 'Unmute Audio' : 'Mute Audio'}
+          >
+            {isAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          </button>
 
           {/* Admin panel button if admin */}
           {currentUser.role === 'admin' && onOpenAdminPanel && (
