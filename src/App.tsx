@@ -178,6 +178,7 @@ export default function App() {
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
     setIsPortalModalOpen(false);
+    setIsOracleReportsPortalOpen(true);
     // Update user's last login
     const updated = users.map(u => u.id === user.id ? {
       ...u,
