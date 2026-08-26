@@ -5,7 +5,6 @@ import { FalconLogo } from './FalconLogo';
 import { 
   Lock, 
   CheckCircle2, 
-  ExternalLink, 
   ShieldAlert, 
   ShieldCheck, 
   Search, 
@@ -276,18 +275,6 @@ export const OracleReportsPortal: React.FC<OracleReportsPortalProps> = ({
                 <RefreshCw className="w-3.5 h-3.5 text-slate-600" />
                 Reload
               </button>
-
-              {/* Open in external tab if desired */}
-              <a
-                href={`http://192.168.100.202:8080${selectedReport.endpointUrl}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
-                title="Open directly in standalone browser tab"
-              >
-                <ExternalLink className="w-3 h-3" />
-                Open External
-              </a>
             </div>
           </div>
 
