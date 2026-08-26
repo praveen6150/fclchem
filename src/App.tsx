@@ -91,10 +91,10 @@ export default function App() {
     return INITIAL_EMAILS;
   });
   
-  // Current Session & View navigation - Active by default
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(INITIAL_USERS[0]);
+  // Current Session & View navigation - Default to main website presentation
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
-  const [isOracleReportsPortalOpen, setIsOracleReportsPortalOpen] = useState(true);
+  const [isOracleReportsPortalOpen, setIsOracleReportsPortalOpen] = useState(false);
 
   // Simulated Host Network IP (Office 192.168.100.45 vs WAN 86.96.12.114)
   const [currentSimulatedIp, setCurrentSimulatedIp] = useState<string>('192.168.100.45');
