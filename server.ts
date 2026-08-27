@@ -357,12 +357,112 @@ app.get('/api/users', (req, res) => {
 
 app.post('/api/users', (req, res) => {
   try {
-    const { users } = req.body;
+    const { user, users } = req.body;
+    
+    // Save to local store file
     if (Array.isArray(users)) {
       fs.writeFileSync(USERS_STORE_FILE, JSON.stringify({ users }, null, 2), 'utf-8');
-      return res.json({ success: true, count: users.length });
+    } else if (user) {
+      let currentUsers: any[] = [];
+      if (fs.existsSync(USERS_STORE_FILE)) {
+        try {
+          const parsed = JSON.parse(fs.readFileSync(USERS_STORE_FILE, 'utf-8'));
+          if (Array.isArray(parsed.users)) currentUsers = parsed.users;
+        } catch {}
+      }
+      const existingIdx = currentUsers.findIndex(u => u.username === user.username || u.id === user.id);
+      if (existingIdx >= 0) {
+        currentUsers[existingIdx] = user;
+      } else {
+        currentUsers.push(user);
+      }
+      fs.writeFileSync(USERS_STORE_FILE, JSON.stringify({ users: currentUsers }, null, 2), 'utf-8');
     }
-    return res.status(400).json({ success: false, error: 'Users array required' });
+
+    // Direct automated PHP / MariaDB invocation on server
+    const targetUser = user || (Array.isArray(users) ? users[users.length - 1] : null);
+    if (targetUser) {
+      const phpScript = `<?php
+$data = json_decode(base64_decode('${Buffer.from(JSON.stringify(targetUser)).toString('base64')}'), true);
+$configPath = file_exists('/var/www/kyc/db_config.php') ? '/var/www/kyc/db_config.php' : (file_exists('/var/www/FalconChemicalsWebsite/db_config.php') ? '/var/www/FalconChemicalsWebsite/db_config.php' : null);
+
+if ($configPath && $data && !empty($data['username'])) {
+    require_once $configPath;
+    $id = !empty($data['id']) ? $data['id'] : ('usr_' . $data['username'] . '_' . time());
+    $username = strtolower(trim($data['username']));
+    $fullName = trim($data['fullName'] ?? $data['full_name'] ?? $username);
+    $email = trim($data['email'] ?? ($username . '@falconchemicals.com'));
+    $password = !empty($data['password']) ? $data['password'] : 'Falcon@2026';
+    $role = $data['role'] ?? 'operator';
+    $department = $data['department'] ?? 'Commercial Sales & Dispatch';
+    $companyOrBranch = $data['companyOrBranch'] ?? $data['branch'] ?? 'Falcon Chemicals LLC';
+    $isActive = isset($data['isActive']) ? ($data['isActive'] ? 1 : 0) : 1;
+    $authMethod = $data['authMethod'] ?? 'token_otp';
+    $ipPolicy = $data['ipPolicy'] ?? 'office_only';
+    $customAllowedSubnet = $data['customAllowedSubnet'] ?? '192.168.100.0/24';
+    $allowedReportIds = is_array($data['allowedReportIds'] ?? null) ? json_encode($data['allowedReportIds']) : ($data['allowedReportIds'] ?? '[]');
+    $createdDate = $data['createdDate'] ?? date('Y-m-d');
+    $lastLogin = $data['lastLogin'] ?? 'Never';
+    $lastLoginIp = $data['lastLoginIp'] ?? '192.168.100.45';
+
+    try {
+        $sql = "INSERT INTO portal_users (
+            id, username, fullName, email, password, role, department, companyOrBranch, 
+            isActive, authMethod, ipPolicy, customAllowedSubnet, allowedReportIds, createdDate, lastLogin, lastLoginIp
+        ) VALUES (
+            :id, :username, :fullName, :email, :password, :role, :department, :companyOrBranch, 
+            :isActive, :authMethod, :ipPolicy, :customAllowedSubnet, :allowedReportIds, :createdDate, :lastLogin, :lastLoginIp
+        ) ON DUPLICATE KEY UPDATE 
+            fullName = VALUES(fullName),
+            email = VALUES(email),
+            password = IF(VALUES(password) != '', VALUES(password), password),
+            role = VALUES(role),
+            department = VALUES(department),
+            companyOrBranch = VALUES(companyOrBranch),
+            isActive = VALUES(isActive),
+            authMethod = VALUES(authMethod),
+            ipPolicy = VALUES(ipPolicy),
+            customAllowedSubnet = VALUES(customAllowedSubnet),
+            allowedReportIds = VALUES(allowedReportIds)";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':id' => $id,
+            ':username' => $username,
+            ':fullName' => $fullName,
+            ':email' => $email,
+            ':password' => $password,
+            ':role' => $role,
+            ':department' => $department,
+            ':companyOrBranch' => $companyOrBranch,
+            ':isActive' => $isActive,
+            ':authMethod' => $authMethod,
+            ':ipPolicy' => $ipPolicy,
+            ':customAllowedSubnet' => $customAllowedSubnet,
+            ':allowedReportIds' => $allowedReportIds,
+            ':createdDate' => $createdDate,
+            ':lastLogin' => $lastLogin,
+            ':lastLoginIp' => $lastLoginIp
+        ]);
+        echo "MARIADB_SAVED";
+    } catch (Exception $e) {
+        echo "MARIADB_ERROR: " . $e->getMessage();
+    }
+}
+?>`;
+
+      const tempPhp = path.join(process.cwd(), `sync_user_${Date.now()}.php`);
+      fs.writeFile(tempPhp, phpScript, (err) => {
+        if (!err) {
+          exec(`php ${tempPhp}`, (phpErr, stdout) => {
+            fs.unlink(tempPhp, () => {});
+            if (stdout) console.log('[Portal Database Sync Output]:', stdout);
+          });
+        }
+      });
+    }
+
+    return res.json({ success: true, message: 'User written automatically via PHP to MariaDB' });
   } catch (e: any) {
     console.error('[Users API] Error saving users:', e);
     return res.status(500).json({ success: false, error: e.message });

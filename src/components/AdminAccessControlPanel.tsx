@@ -172,30 +172,14 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
       createdDate: editingUserId ? (users.find(u => u.id === editingUserId)?.createdDate || new Date().toISOString().slice(0, 10)) : new Date().toISOString().slice(0, 10)
     };
 
-    // 1. Direct POST to PHP backend (api_portal_users.php) matching KYC structure
+    // 1. Direct automated write to PHP / MariaDB backend
     try {
-      const phpFormData = new FormData();
-      phpFormData.append('action', 'save_user');
-      phpFormData.append('id', userPayload.id);
-      phpFormData.append('username', userPayload.username);
-      phpFormData.append('fullName', userPayload.fullName);
-      phpFormData.append('email', userPayload.email);
-      phpFormData.append('password', userPayload.password || '');
-      phpFormData.append('role', userPayload.role);
-      phpFormData.append('department', userPayload.department);
-      phpFormData.append('companyOrBranch', userPayload.companyOrBranch);
-      phpFormData.append('authMethod', userPayload.authMethod);
-      phpFormData.append('ipPolicy', userPayload.ipPolicy);
-      phpFormData.append('customAllowedSubnet', userPayload.customAllowedSubnet || '');
-      phpFormData.append('allowedReportIds', JSON.stringify(userPayload.allowedReportIds));
-      phpFormData.append('isActive', userPayload.isActive ? '1' : '0');
-
-      // Attempt saving to PHP endpoints
-      await Promise.any([
+      await Promise.allSettled([
+        fetch('/save_user.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
         fetch('/api_portal_users.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
-        fetch('http://192.168.100.202/api_portal_users.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
+        fetch('/sync_users.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
         fetch('/api/users', { method: 'POST', body: JSON.stringify({ user: userPayload }), headers: { 'Content-Type': 'application/json' } })
-      ]).catch(() => {});
+      ]);
     } catch {
       // Background catch
     }
