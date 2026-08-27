@@ -33,10 +33,7 @@ export default function App() {
       if (saved) {
         const parsed: UserAccount[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge initial system users with any user custom accounts
-          const existingUsernames = new Set(parsed.map(u => u.username.toLowerCase()));
-          const missingInitials = INITIAL_USERS.filter(iu => !existingUsernames.has(iu.username.toLowerCase()));
-          return [...parsed, ...missingInitials];
+          return parsed;
         }
       }
     } catch (e) {
@@ -45,24 +42,31 @@ export default function App() {
     return INITIAL_USERS;
   });
 
-  // Fetch persisted users from server on mount
+  // Fetch persisted users from server on mount (MariaDB authoritative source)
   useEffect(() => {
+    let isMounted = true;
     const fetchServerUsers = async () => {
       try {
-        const isProduction = window.location.hostname === 'kyc.falconchemicals.com' || window.location.port === '';
-        const endpoint = isProduction ? '/users_api.php' : '/api/users';
-        const res = await fetch(endpoint);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data.users) && data.users.length > 0) {
-            setUsers(data.users);
-          }
+        const endpoints = ['/api/users', '/api_portal_users.php', '/save_user.php'];
+        for (const ep of endpoints) {
+          try {
+            const res = await fetch(ep);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && Array.isArray(data.users) && data.users.length > 0 && isMounted) {
+                setUsers(data.users);
+                localStorage.setItem(STORAGE_USERS, JSON.stringify(data.users));
+                break;
+              }
+            }
+          } catch {}
         }
       } catch (err) {
         console.warn('[Falcon Users] Note: Local storage persistence active:', err);
       }
     };
     fetchServerUsers();
+    return () => { isMounted = false; };
   }, []);
 
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
@@ -106,24 +110,15 @@ export default function App() {
       fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ users })
+        body: JSON.stringify({ action: 'sync', users })
       }).catch(() => {});
 
-      // 2. Direct Sync to MariaDB PHP API on Linux server (192.168.100.202)
-      users.forEach(u => {
-        fetch('http://192.168.100.202/api_portal_users.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(u)
-        }).catch(() => {
-          // If on relative server path or same host
-          fetch('/api_portal_users.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(u)
-          }).catch(() => {});
-        });
-      });
+      // 2. Direct Sync to MariaDB PHP API
+      fetch('/api_portal_users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sync', users })
+      }).catch(() => {});
     } catch (e) {
       console.warn('Error saving users to storage', e);
     }

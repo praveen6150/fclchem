@@ -205,12 +205,32 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
     };
 
     // 1. Direct automated write to PHP / MariaDB backend
+    const updatedUsersList = editingUserId 
+      ? users.map(u => u.id === editingUserId ? userPayload : u)
+      : [...users, userPayload];
+
     try {
       await Promise.allSettled([
-        fetch('/save_user.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
-        fetch('/api_portal_users.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
-        fetch('/sync_users.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
-        fetch('/api/users', { method: 'POST', body: JSON.stringify({ user: userPayload }), headers: { 'Content-Type': 'application/json' } })
+        fetch('/api/users', { 
+          method: 'POST', 
+          body: JSON.stringify({ action: 'save', user: userPayload, users: updatedUsersList }), 
+          headers: { 'Content-Type': 'application/json' } 
+        }),
+        fetch('/api_portal_users.php', { 
+          method: 'POST', 
+          body: JSON.stringify({ action: 'save', user: userPayload, users: updatedUsersList }), 
+          headers: { 'Content-Type': 'application/json' } 
+        }),
+        fetch('/save_user.php', { 
+          method: 'POST', 
+          body: JSON.stringify(userPayload), 
+          headers: { 'Content-Type': 'application/json' } 
+        }),
+        fetch('/sync_users.php', { 
+          method: 'POST', 
+          body: JSON.stringify({ action: 'save', user: userPayload, users: updatedUsersList }), 
+          headers: { 'Content-Type': 'application/json' } 
+        })
       ]);
     } catch {
       // Background catch
@@ -218,8 +238,7 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
 
     if (editingUserId) {
       // Update existing user
-      const updated = users.map(u => u.id === editingUserId ? userPayload : u);
-      onUpdateUsers(updated);
+      onUpdateUsers(updatedUsersList);
 
       onAddAuditLog({
         id: `log_${Date.now()}`,
@@ -234,7 +253,7 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
       });
     } else {
       // Create new user
-      onUpdateUsers([...users, userPayload]);
+      onUpdateUsers(updatedUsersList);
 
       // Send Welcome / Credentials email from noreply@falconchemicals.com
       const welcomeEmail: VirtualEmail = {
@@ -264,21 +283,50 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
 
     setIsSaving(false);
     setIsEditModalOpen(false);
-    setSaveStatusMsg(`User "${formUsername}" & permissions successfully applied and sent to MariaDB backend.`);
+    setSaveStatusMsg(`User "${formUsername}" saved and synchronized to MariaDB database.`);
     setTimeout(() => setSaveStatusMsg(null), 4000);
   };
 
-  // Delete User
-  const handleDeleteUser = (userId: string, username: string) => {
+  // Delete User with immediate MariaDB SQL execution
+  const handleDeleteUser = async (userId: string, username: string) => {
     if (username === 'praveen' || username === 'admin') {
       audioEngine.playError();
       alert('Chief Administrator account cannot be deleted.');
       return;
     }
-    if (confirm(`Are you sure you want to delete end user "${username}"?`)) {
+    if (confirm(`Are you sure you want to delete end user "${username}" from the portal and database?`)) {
       audioEngine.playClick();
-      const updated = users.filter(u => u.id !== userId);
+      const updated = users.filter(u => u.id !== userId && u.username !== username);
+      
+      // Update UI state immediately
       onUpdateUsers(updated);
+
+      // Trigger server-side and MariaDB deletion
+      try {
+        await Promise.allSettled([
+          fetch('/api/users', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete', username, id: userId, users: updated }),
+            headers: { 'Content-Type': 'application/json' }
+          }),
+          fetch('/api_portal_users.php', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete', username, id: userId, users: updated }),
+            headers: { 'Content-Type': 'application/json' }
+          }),
+          fetch('/save_user.php', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete', username, id: userId, users: updated }),
+            headers: { 'Content-Type': 'application/json' }
+          })
+        ]);
+      } catch (err) {
+        console.warn('Error during MariaDB user deletion:', err);
+      }
+
+      setSaveStatusMsg(`User "${username}" deleted and removed from MariaDB.`);
+      setTimeout(() => setSaveStatusMsg(null), 4000);
+
       onAddAuditLog({
         id: `log_${Date.now()}`,
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
