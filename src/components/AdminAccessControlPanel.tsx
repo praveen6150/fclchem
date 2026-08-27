@@ -56,9 +56,41 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
   const [activeTab, setActiveTab] = useState<'users' | 'audit_logs' | 'network_policies'>('users');
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
+  const [isDiagModalOpen, setIsDiagModalOpen] = useState(false);
+  const [diagResults, setDiagResults] = useState<any>(null);
+  const [isDiagRunning, setIsDiagRunning] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatusMsg, setSaveStatusMsg] = useState<string | null>(null);
+
+  // Run live database diagnostic test
+  const handleRunDiagnostic = async () => {
+    setIsDiagRunning(true);
+    setDiagResults(null);
+    audioEngine.playClick();
+    try {
+      const response = await fetch('/test_db_write.php');
+      if (response.ok) {
+        const json = await response.json();
+        setDiagResults(json);
+      } else {
+        setDiagResults({
+          status: 'HTTP_ERROR',
+          code: response.status,
+          text: response.statusText,
+          message: 'The server responded with an error when accessing test_db_write.php'
+        });
+      }
+    } catch (err: any) {
+      setDiagResults({
+        status: 'FETCH_ERROR',
+        error: err.message,
+        message: 'Could not connect to test_db_write.php directly. Check instructions in the modal.'
+      });
+    } finally {
+      setIsDiagRunning(false);
+    }
+  };
   
   // User Modal State (Create / Edit)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -338,6 +370,19 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
           >
             <Mail className="w-3.5 h-3.5" />
             <span>noreply Inbox</span>
+          </button>
+
+          <button
+            onClick={() => {
+              audioEngine.playClick();
+              setIsDiagModalOpen(true);
+              handleRunDiagnostic();
+            }}
+            className="px-3 py-1.5 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+            title="Test Live PHP & MariaDB Connection and Table Writes"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>DB Diagnostic Test</span>
           </button>
 
           <button
@@ -1139,6 +1184,102 @@ SELECT username, full_name, role, department, ip_policy FROM portal_users;`}
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Database Diagnostic Modal */}
+      {isDiagModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Live MariaDB & PHP Pipeline Diagnostic</h3>
+                  <p className="text-xs text-slate-400">Verifying db_config.php, PDO connection, column types, and test table writes</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDiagModalOpen(false)}
+                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Endpoint:</span>
+                <code className="text-emerald-300 font-mono">/test_db_write.php</code>
+              </div>
+              <button
+                onClick={handleRunDiagnostic}
+                disabled={isDiagRunning}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg font-semibold flex items-center gap-1.5 shadow"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isDiagRunning ? 'animate-spin' : ''}`} />
+                <span>{isDiagRunning ? 'Running Test...' : 'Re-Run Diagnostic'}</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 font-mono text-xs bg-slate-950 p-4 rounded-xl border border-slate-800 text-slate-300">
+              {isDiagRunning ? (
+                <div className="flex flex-col items-center justify-center py-8 space-y-3 text-slate-400">
+                  <RefreshCw className="w-8 h-8 animate-spin text-emerald-400" />
+                  <p>Contacting server database test pipeline...</p>
+                </div>
+              ) : diagResults ? (
+                <div className="space-y-4 font-sans">
+                  {diagResults.steps && Array.isArray(diagResults.steps) ? (
+                    diagResults.steps.map((s: any, idx: number) => (
+                      <div key={idx} className={`p-3 rounded-xl border ${s.status === 'PASSED' ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200' : 'bg-red-950/20 border-red-500/30 text-red-200'}`}>
+                        <div className="flex items-center justify-between font-bold text-xs">
+                          <span>{s.step}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] ${s.status === 'PASSED' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>{s.status}</span>
+                        </div>
+                        {s.config_path && <p className="text-slate-400 mt-1 font-mono text-[11px]">Found: {s.config_path}</p>}
+                        {s.database_version && <p className="text-slate-400 mt-1 font-mono text-[11px]">MariaDB Engine: {s.database_version}</p>}
+                        {s.columns && <p className="text-slate-400 mt-1 font-mono text-[11px]">Detected Columns: {s.columns.join(', ')}</p>}
+                        {s.role_enum_definition && <p className="text-slate-400 mt-1 font-mono text-[11px]">Role Definition: {s.role_enum_definition}</p>}
+                        {s.error && <p className="text-red-400 mt-1 font-mono text-[11px]">Error: {s.error}</p>}
+                        {s.total_users_in_mariadb !== undefined && (
+                          <div className="mt-2 pt-2 border-t border-slate-800/80">
+                            <p className="text-slate-300 font-semibold mb-1">Total Users in MariaDB: {s.total_users_in_mariadb}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {s.users?.map((u: any, uIdx: number) => (
+                                <span key={uIdx} className="px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-[11px] font-mono text-cyan-300">
+                                  @{u.username} ({u.role})
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 bg-amber-950/30 border border-amber-500/30 rounded-xl text-amber-200">
+                      <p className="font-bold mb-1">Response Information:</p>
+                      <pre className="text-[11px] font-mono whitespace-pre-wrap">{JSON.stringify(diagResults, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-slate-400">Click &quot;Re-Run Diagnostic&quot; above to inspect your MariaDB connection status.</div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span>CLI Shortcut: <code className="text-cyan-300 font-mono">php /var/www/FalconChemicalsWebsite/test_db_write.php</code></span>
+              <button
+                onClick={() => setIsDiagModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
