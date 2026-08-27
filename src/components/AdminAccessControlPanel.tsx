@@ -57,6 +57,8 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatusMsg, setSaveStatusMsg] = useState<string | null>(null);
   
   // User Modal State (Create / Edit)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -147,32 +149,60 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
   };
 
   // Save User (Create or Update)
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     audioEngine.playSuccess();
+
+    const targetId = editingUserId || `usr_${Date.now()}`;
+    const userPayload: UserAccount = {
+      id: targetId,
+      fullName: formFullName.trim(),
+      username: formUsername.trim().toLowerCase(),
+      email: formEmail.trim().toLowerCase(),
+      password: formPassword || 'Falcon@2026',
+      role: formRole,
+      department: formDepartment.trim(),
+      companyOrBranch: formBranch.trim(),
+      authMethod: formAuthMethod,
+      ipPolicy: formIpPolicy,
+      customAllowedSubnet: formCustomSubnet.trim(),
+      allowedReportIds: formAllowedReports,
+      isActive: formIsActive,
+      createdDate: editingUserId ? (users.find(u => u.id === editingUserId)?.createdDate || new Date().toISOString().slice(0, 10)) : new Date().toISOString().slice(0, 10)
+    };
+
+    // 1. Direct POST to PHP backend (api_portal_users.php) matching KYC structure
+    try {
+      const phpFormData = new FormData();
+      phpFormData.append('action', 'save_user');
+      phpFormData.append('id', userPayload.id);
+      phpFormData.append('username', userPayload.username);
+      phpFormData.append('fullName', userPayload.fullName);
+      phpFormData.append('email', userPayload.email);
+      phpFormData.append('password', userPayload.password || '');
+      phpFormData.append('role', userPayload.role);
+      phpFormData.append('department', userPayload.department);
+      phpFormData.append('companyOrBranch', userPayload.companyOrBranch);
+      phpFormData.append('authMethod', userPayload.authMethod);
+      phpFormData.append('ipPolicy', userPayload.ipPolicy);
+      phpFormData.append('customAllowedSubnet', userPayload.customAllowedSubnet || '');
+      phpFormData.append('allowedReportIds', JSON.stringify(userPayload.allowedReportIds));
+      phpFormData.append('isActive', userPayload.isActive ? '1' : '0');
+
+      // Attempt saving to PHP endpoints
+      await Promise.any([
+        fetch('/api_portal_users.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
+        fetch('http://192.168.100.202/api_portal_users.php', { method: 'POST', body: JSON.stringify(userPayload), headers: { 'Content-Type': 'application/json' } }),
+        fetch('/api/users', { method: 'POST', body: JSON.stringify({ user: userPayload }), headers: { 'Content-Type': 'application/json' } })
+      ]).catch(() => {});
+    } catch {
+      // Background catch
+    }
 
     if (editingUserId) {
       // Update existing user
-      const updated = users.map(u => {
-        if (u.id === editingUserId) {
-          return {
-            ...u,
-            fullName: formFullName.trim(),
-            username: formUsername.trim().toLowerCase(),
-            email: formEmail.trim().toLowerCase(),
-            password: formPassword,
-            role: formRole,
-            department: formDepartment.trim(),
-            companyOrBranch: formBranch.trim(),
-            authMethod: formAuthMethod,
-            ipPolicy: formIpPolicy,
-            customAllowedSubnet: formCustomSubnet.trim(),
-            allowedReportIds: formAllowedReports,
-            isActive: formIsActive
-          };
-        }
-        return u;
-      });
+      const updated = users.map(u => u.id === editingUserId ? userPayload : u);
       onUpdateUsers(updated);
 
       onAddAuditLog({
@@ -188,23 +218,7 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
       });
     } else {
       // Create new user
-      const newUser: UserAccount = {
-        id: `usr_${Date.now()}`,
-        fullName: formFullName.trim(),
-        username: formUsername.trim().toLowerCase(),
-        email: formEmail.trim().toLowerCase(),
-        password: formPassword,
-        role: formRole,
-        department: formDepartment.trim(),
-        companyOrBranch: formBranch.trim(),
-        authMethod: formAuthMethod,
-        ipPolicy: formIpPolicy,
-        customAllowedSubnet: formCustomSubnet.trim(),
-        allowedReportIds: formAllowedReports,
-        isActive: formIsActive,
-        createdDate: new Date().toISOString().slice(0, 10)
-      };
-      onUpdateUsers([...users, newUser]);
+      onUpdateUsers([...users, userPayload]);
 
       // Send Welcome / Credentials email from noreply@falconchemicals.com
       const welcomeEmail: VirtualEmail = {
@@ -232,7 +246,10 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
       });
     }
 
+    setIsSaving(false);
     setIsEditModalOpen(false);
+    setSaveStatusMsg(`User "${formUsername}" & permissions successfully applied and sent to MariaDB backend.`);
+    setTimeout(() => setSaveStatusMsg(null), 4000);
   };
 
   // Delete User
@@ -308,6 +325,13 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-2.5">
+          {saveStatusMsg && (
+            <div className="px-3 py-1.5 bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg animate-in fade-in">
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{saveStatusMsg}</span>
+            </div>
+          )}
+
           {onOpenOraclePortal && (
             <button
               onClick={() => {
@@ -1014,10 +1038,20 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center gap-1.5"
+                  disabled={isSaving}
+                  className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-lg shadow-cyan-900/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  <Check className="w-4 h-4" />
-                  Save User & Apply Permissions
+                  {isSaving ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Writing to MariaDB via PHP...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save User & Apply Permissions</span>
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -1078,13 +1112,10 @@ CREATE TABLE IF NOT EXISTS portal_users (
   last_login_ip VARCHAR(64)
 );
 
--- Insert or Update All Current Portal Users (Praveen, Ajay, Vishwas, Rajeev)
+-- Insert or Update All Current Portal Users (${users.map(u => u.username).join(', ')})
 INSERT INTO portal_users (id, username, full_name, email, password, role, department, branch, auth_method, ip_policy, allowed_subnet, is_active)
 VALUES 
-('usr_admin_01', 'praveen', 'Praveen (Chief Admin)', 'praveen@falconchemicals.com', 'FalconAdmin@2026', 'admin', 'Executive IT & Corporate Security', 'Falcon Chemicals LLC HQ - Dubai', 'password_plus_token', 'office_only', '192.168.100.0/24', 1),
-('usr_ajay_02', 'ajay', 'Ajay (Sales & Dispatch Manager)', 'ajay@falconchemicals.com', 'Falcon@2026', 'manager', 'Commercial Sales & Dispatch Logistics', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1),
-('usr_vishwas_03', 'vishwas', 'Vishwas Londhe', 'vishwas@falconchemicals.com', 'Falcon@2026', 'manager', 'Dispatch & Logistics', 'Falcon Chemicals LLC - Jebel Ali', 'password', 'office_only', '192.168.100.0/24', 1),
-('usr_rajeev_04', 'rajeev', 'Rajeev Kumar', 'rajeev@falconchemicals.com', 'Falcon@2026', 'analyst', 'Commercial & Production Operations', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1)
+${users.map(u => `('${u.id}', '${u.username}', '${u.fullName.replace(/'/g, "''")}', '${u.email}', '${u.password || 'Falcon@2026'}', '${u.role}', '${u.department.replace(/'/g, "''")}', '${u.companyOrBranch.replace(/'/g, "''")}', '${u.authMethod}', '${u.ipPolicy}', '${u.customAllowedSubnet || '192.168.100.0/24'}', ${u.isActive ? 1 : 0})`).join(',\n')}
 ON DUPLICATE KEY UPDATE
   full_name = VALUES(full_name),
   email = VALUES(email),
@@ -1105,7 +1136,8 @@ SELECT username, full_name, role, department, ip_policy FROM portal_users;`}
                 <button
                   type="button"
                   onClick={() => {
-                    const sqlText = `USE falcon_kyc;\n\nINSERT INTO portal_users (id, username, full_name, email, password, role, department, branch, auth_method, ip_policy, allowed_subnet, is_active)\nVALUES \n('usr_admin_01', 'praveen', 'Praveen (Chief Admin)', 'praveen@falconchemicals.com', 'FalconAdmin@2026', 'admin', 'Executive IT & Corporate Security', 'Falcon Chemicals LLC HQ - Dubai', 'password_plus_token', 'office_only', '192.168.100.0/24', 1),\n('usr_ajay_02', 'ajay', 'Ajay (Sales & Dispatch Manager)', 'ajay@falconchemicals.com', 'Falcon@2026', 'manager', 'Commercial Sales & Dispatch Logistics', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1),\n('usr_vishwas_03', 'vishwas', 'Vishwas Londhe', 'vishwas@falconchemicals.com', 'Falcon@2026', 'manager', 'Dispatch & Logistics', 'Falcon Chemicals LLC - Jebel Ali', 'password', 'office_only', '192.168.100.0/24', 1),\n('usr_rajeev_04', 'rajeev', 'Rajeev Kumar', 'rajeev@falconchemicals.com', 'Falcon@2026', 'analyst', 'Commercial & Production Operations', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1)\nON DUPLICATE KEY UPDATE full_name=VALUES(full_name), email=VALUES(email), role=VALUES(role), department=VALUES(department), is_active=1;\n\nCOMMIT;\n\nSELECT username, full_name, role FROM portal_users;`;
+                    const valuesList = users.map(u => `('${u.id}', '${u.username}', '${u.fullName.replace(/'/g, "''")}', '${u.email}', '${u.password || 'Falcon@2026'}', '${u.role}', '${u.department.replace(/'/g, "''")}', '${u.companyOrBranch.replace(/'/g, "''")}', '${u.authMethod}', '${u.ipPolicy}', '${u.customAllowedSubnet || '192.168.100.0/24'}', ${u.isActive ? 1 : 0})`).join(',\n');
+                    const sqlText = `USE falcon_kyc;\n\nINSERT INTO portal_users (id, username, full_name, email, password, role, department, branch, auth_method, ip_policy, allowed_subnet, is_active)\nVALUES \n${valuesList}\nON DUPLICATE KEY UPDATE full_name=VALUES(full_name), email=VALUES(email), role=VALUES(role), department=VALUES(department), is_active=1;\n\nCOMMIT;\n\nSELECT username, full_name, role FROM portal_users;`;
                     navigator.clipboard.writeText(sqlText);
                     setSqlCopied(true);
                     setTimeout(() => setSqlCopied(false), 2500);

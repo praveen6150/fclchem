@@ -99,19 +99,33 @@ export default function App() {
   // Simulated Host Network IP (Office 192.168.100.45 vs WAN 86.96.12.114)
   const [currentSimulatedIp, setCurrentSimulatedIp] = useState<string>('192.168.100.45');
 
-  // Persist changes to localStorage and sync to server endpoint
+  // Persist changes to localStorage and sync to server endpoint & MariaDB PHP API
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
       
-      // Background sync to server users_store.json
-      const isProduction = window.location.hostname === 'kyc.falconchemicals.com' || window.location.port === '';
-      const endpoint = isProduction ? '/users_api.php' : '/api/users';
-      fetch(endpoint, {
+      // 1. Background sync to local server endpoint
+      fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ users })
       }).catch(() => {});
+
+      // 2. Direct Sync to MariaDB PHP API on Linux server (192.168.100.202)
+      users.forEach(u => {
+        fetch('http://192.168.100.202/api_portal_users.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(u)
+        }).catch(() => {
+          // If on relative server path or same host
+          fetch('/api_portal_users.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(u)
+          }).catch(() => {});
+        });
+      });
     } catch (e) {
       console.warn('Error saving users to storage', e);
     }
