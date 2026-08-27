@@ -105,7 +105,7 @@ export const INITIAL_USERS: UserAccount[] = [
     department: 'Commercial Sales & Dispatch',
     companyOrBranch: 'Falcon Chemicals LLC - Dubai HQ',
     isActive: true,
-    authMethod: 'token_only',
+    authMethod: 'token_otp',
     ipPolicy: 'office_only',
     customAllowedSubnet: '192.168.100.0/24',
     allowedReportIds: [

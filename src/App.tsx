@@ -14,9 +14,9 @@ import { INITIAL_USERS, INITIAL_AUDIT_LOGS, INITIAL_EMAILS } from './data/usersD
 import { audioEngine } from './services/audioEngine';
 
 // Local storage keys for state persistence
-const STORAGE_USERS = 'falcon_chemicals_users_v4';
-const STORAGE_LOGS = 'falcon_chemicals_logs_v4';
-const STORAGE_EMAILS = 'falcon_chemicals_emails_v4';
+const STORAGE_USERS = 'falcon_chemicals_users_v5';
+const STORAGE_LOGS = 'falcon_chemicals_logs_v5';
+const STORAGE_EMAILS = 'falcon_chemicals_emails_v5';
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
@@ -33,12 +33,10 @@ export default function App() {
       if (saved) {
         const parsed: UserAccount[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Deduplicate admin if multiple admin accounts exist in storage
-          const nonAdmins = parsed.filter(u => u.role !== 'admin' && u.username.toLowerCase() !== 'admin' && u.username.toLowerCase() !== 'praveen');
-          const adminUser = parsed.find(u => u.role === 'admin' || u.username.toLowerCase() === 'praveen' || u.username.toLowerCase() === 'admin') || INITIAL_USERS[0];
-          
-          // Return clean single admin + custom created users (without reviving deleted users)
-          return [{ ...adminUser, username: 'praveen', fullName: 'Praveen (Chief Admin)', email: 'praveen@falconchemicals.com', role: 'admin' as const }, ...nonAdmins];
+          // Merge initial system users with any user custom accounts
+          const existingUsernames = new Set(parsed.map(u => u.username.toLowerCase()));
+          const missingInitials = INITIAL_USERS.filter(iu => !existingUsernames.has(iu.username.toLowerCase()));
+          return [...parsed, ...missingInitials];
         }
       }
     } catch (e) {
