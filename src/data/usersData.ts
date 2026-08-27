@@ -94,6 +94,32 @@ export const INITIAL_USERS: UserAccount[] = [
     createdDate: '2026-08-25',
     lastLogin: '2026-08-26 11:20:00',
     lastLoginIp: '192.168.100.45'
+  },
+  {
+    id: 'usr_wali_05',
+    username: 'wali',
+    fullName: 'Wali Kamil',
+    email: 'sales1@falconchemicals.com',
+    password: 'Falcon@2026',
+    role: 'operator',
+    department: 'Commercial Sales & Dispatch',
+    companyOrBranch: 'Falcon Chemicals LLC - Dubai HQ',
+    isActive: true,
+    authMethod: 'token_only',
+    ipPolicy: 'office_only',
+    customAllowedSubnet: '192.168.100.0/24',
+    allowedReportIds: [
+      'ora_sales_div_drilldown',
+      'ora_sales_avg_analysis',
+      'ora_sales_salesman_rep',
+      'ora_sales_pending_orders',
+      'ora_sales_return_item',
+      'ora_dispatch_daily_report',
+      'ora_sales_cust_supp_master'
+    ],
+    createdDate: '2026-08-27',
+    lastLogin: 'Never',
+    lastLoginIp: '192.168.100.45'
   }
 ];
 
