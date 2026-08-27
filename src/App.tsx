@@ -14,9 +14,9 @@ import { INITIAL_USERS, INITIAL_AUDIT_LOGS, INITIAL_EMAILS } from './data/usersD
 import { audioEngine } from './services/audioEngine';
 
 // Local storage keys for state persistence
-const STORAGE_USERS = 'falcon_chemicals_users_v3';
-const STORAGE_LOGS = 'falcon_chemicals_logs_v3';
-const STORAGE_EMAILS = 'falcon_chemicals_emails_v3';
+const STORAGE_USERS = 'falcon_chemicals_users_v4';
+const STORAGE_LOGS = 'falcon_chemicals_logs_v4';
+const STORAGE_EMAILS = 'falcon_chemicals_emails_v4';
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);

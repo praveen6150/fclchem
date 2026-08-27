@@ -55,6 +55,8 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'audit_logs' | 'network_policies'>('users');
   const [searchUserQuery, setSearchUserQuery] = useState('');
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
   
   // User Modal State (Create / Edit)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -328,6 +330,18 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
           >
             <Mail className="w-3.5 h-3.5" />
             <span>noreply Inbox</span>
+          </button>
+
+          <button
+            onClick={() => {
+              audioEngine.playClick();
+              setIsSqlModalOpen(true);
+            }}
+            className="px-3 py-1.5 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+            title="View & Export MariaDB SQL for falcon_kyc.portal_users"
+          >
+            <Database className="w-3.5 h-3.5 text-amber-400" />
+            <span>MariaDB SQL</span>
           </button>
 
           <button
@@ -1009,6 +1023,107 @@ export const AdminAccessControlPanel: React.FC<AdminAccessControlPanelProps> = (
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* MariaDB SQL Export Modal */}
+      {isSqlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">MariaDB [falcon_kyc] SQL Sync Script</h3>
+                  <p className="text-xs text-slate-400">Execute on your database server to permanently commit all portal users</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSqlModalOpen(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs text-slate-300">
+              <p className="text-[11px] text-amber-300/90 bg-amber-950/30 border border-amber-500/20 p-2.5 rounded-xl">
+                💡 <strong>Why users disappeared:</strong> If records were inserted without an explicit <code>COMMIT;</code>, or if the database container was restarted or rolled back from a backup dump, uncommitted rows are wiped. Run this SQL in <code>MariaDB [falcon_kyc]&gt;</code> to permanently commit them.
+              </p>
+            </div>
+
+            <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3.5 font-mono text-[11px] text-emerald-400 overflow-y-auto max-h-72 select-all leading-relaxed whitespace-pre">
+{`USE falcon_kyc;
+
+-- Ensure portal_users table exists with correct schema
+CREATE TABLE IF NOT EXISTS portal_users (
+  id VARCHAR(64) PRIMARY KEY,
+  username VARCHAR(64) NOT NULL UNIQUE,
+  full_name VARCHAR(128) NOT NULL,
+  email VARCHAR(128) NOT NULL,
+  password VARCHAR(128) NOT NULL,
+  role VARCHAR(32) NOT NULL DEFAULT 'manager',
+  department VARCHAR(128) NOT NULL,
+  branch VARCHAR(128) NOT NULL,
+  auth_method VARCHAR(32) NOT NULL DEFAULT 'password',
+  ip_policy VARCHAR(32) NOT NULL DEFAULT 'office_only',
+  allowed_subnet VARCHAR(64) DEFAULT '192.168.100.0/24',
+  allowed_report_ids TEXT,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_date VARCHAR(32),
+  last_login VARCHAR(32),
+  last_login_ip VARCHAR(64)
+);
+
+-- Insert or Update All Current Portal Users (Praveen, Ajay, Vishwas, Rajeev)
+INSERT INTO portal_users (id, username, full_name, email, password, role, department, branch, auth_method, ip_policy, allowed_subnet, is_active)
+VALUES 
+('usr_admin_01', 'praveen', 'Praveen (Chief Admin)', 'praveen@falconchemicals.com', 'FalconAdmin@2026', 'admin', 'Executive IT & Corporate Security', 'Falcon Chemicals LLC HQ - Dubai', 'password_plus_token', 'office_only', '192.168.100.0/24', 1),
+('usr_ajay_02', 'ajay', 'Ajay (Sales & Dispatch Manager)', 'ajay@falconchemicals.com', 'Falcon@2026', 'manager', 'Commercial Sales & Dispatch Logistics', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1),
+('usr_vishwas_03', 'vishwas', 'Vishwas Londhe', 'vishwas@falconchemicals.com', 'Falcon@2026', 'manager', 'Dispatch & Logistics', 'Falcon Chemicals LLC - Jebel Ali', 'password', 'office_only', '192.168.100.0/24', 1),
+('usr_rajeev_04', 'rajeev', 'Rajeev Kumar', 'rajeev@falconchemicals.com', 'Falcon@2026', 'analyst', 'Commercial & Production Operations', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1)
+ON DUPLICATE KEY UPDATE
+  full_name = VALUES(full_name),
+  email = VALUES(email),
+  role = VALUES(role),
+  department = VALUES(department),
+  branch = VALUES(branch),
+  is_active = 1;
+
+COMMIT;
+
+-- Verify inserted users
+SELECT username, full_name, role, department, ip_policy FROM portal_users;`}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">Total Users in Matrix: <strong>{users.length}</strong></span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sqlText = `USE falcon_kyc;\n\nINSERT INTO portal_users (id, username, full_name, email, password, role, department, branch, auth_method, ip_policy, allowed_subnet, is_active)\nVALUES \n('usr_admin_01', 'praveen', 'Praveen (Chief Admin)', 'praveen@falconchemicals.com', 'FalconAdmin@2026', 'admin', 'Executive IT & Corporate Security', 'Falcon Chemicals LLC HQ - Dubai', 'password_plus_token', 'office_only', '192.168.100.0/24', 1),\n('usr_ajay_02', 'ajay', 'Ajay (Sales & Dispatch Manager)', 'ajay@falconchemicals.com', 'Falcon@2026', 'manager', 'Commercial Sales & Dispatch Logistics', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1),\n('usr_vishwas_03', 'vishwas', 'Vishwas Londhe', 'vishwas@falconchemicals.com', 'Falcon@2026', 'manager', 'Dispatch & Logistics', 'Falcon Chemicals LLC - Jebel Ali', 'password', 'office_only', '192.168.100.0/24', 1),\n('usr_rajeev_04', 'rajeev', 'Rajeev Kumar', 'rajeev@falconchemicals.com', 'Falcon@2026', 'analyst', 'Commercial & Production Operations', 'Falcon Chemicals LLC - Dubai HQ', 'password', 'office_only', '192.168.100.0/24', 1)\nON DUPLICATE KEY UPDATE full_name=VALUES(full_name), email=VALUES(email), role=VALUES(role), department=VALUES(department), is_active=1;\n\nCOMMIT;\n\nSELECT username, full_name, role FROM portal_users;`;
+                    navigator.clipboard.writeText(sqlText);
+                    setSqlCopied(true);
+                    setTimeout(() => setSqlCopied(false), 2500);
+                  }}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl shadow transition-all flex items-center gap-1.5"
+                >
+                  {sqlCopied ? <Check className="w-4 h-4 text-emerald-300" /> : <FileText className="w-4 h-4" />}
+                  {sqlCopied ? 'SQL Copied to Clipboard!' : 'Copy SQL Script'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSqlModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

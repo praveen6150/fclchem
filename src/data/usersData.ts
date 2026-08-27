@@ -48,6 +48,52 @@ export const INITIAL_USERS: UserAccount[] = [
     createdDate: '2026-08-10',
     lastLogin: '2026-08-16 09:30:00',
     lastLoginIp: '192.168.100.45'
+  },
+  {
+    id: 'usr_vishwas_03',
+    username: 'vishwas',
+    fullName: 'Vishwas Londhe',
+    email: 'vishwas@falconchemicals.com',
+    password: 'Falcon@2026',
+    role: 'manager',
+    department: 'Dispatch & Logistics',
+    companyOrBranch: 'Falcon Chemicals LLC - Jebel Ali',
+    isActive: true,
+    authMethod: 'password',
+    ipPolicy: 'office_only',
+    customAllowedSubnet: '192.168.100.0/24',
+    allowedReportIds: [
+      'ora_dispatch_daily_report',
+      'ora_sales_pending_orders',
+      'ora_sales_div_drilldown',
+      'ora_sales_cust_supp_master'
+    ],
+    createdDate: '2026-08-25',
+    lastLogin: '2026-08-26 14:16:00',
+    lastLoginIp: '192.168.100.45'
+  },
+  {
+    id: 'usr_rajeev_04',
+    username: 'rajeev',
+    fullName: 'Rajeev Kumar',
+    email: 'rajeev@falconchemicals.com',
+    password: 'Falcon@2026',
+    role: 'analyst',
+    department: 'Commercial & Production Operations',
+    companyOrBranch: 'Falcon Chemicals LLC - Dubai HQ',
+    isActive: true,
+    authMethod: 'password',
+    ipPolicy: 'office_only',
+    customAllowedSubnet: '192.168.100.0/24',
+    allowedReportIds: [
+      'ora_sales_div_drilldown',
+      'ora_sales_avg_analysis',
+      'ora_prod_formulation_costing',
+      'ora_sales_cust_supp_master'
+    ],
+    createdDate: '2026-08-25',
+    lastLogin: '2026-08-26 11:20:00',
+    lastLoginIp: '192.168.100.45'
   }
 ];
 
